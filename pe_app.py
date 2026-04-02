@@ -205,19 +205,29 @@ st.markdown(f"<div class='sub-header'>Reporting period: {latest['period'].strfti
 # ============================================================
 st.markdown("<div class='kpi-section-title'>Executive summary — key metrics</div>", unsafe_allow_html=True)
 
-c1, c2, c3, c4, c5, c6 = st.columns(6)
-
-def get_delta(curr, prev):
-    if prev == 0: return "0%"
-    diff = ((curr / prev) - 1) * 100
-    return f"{diff:+.1f}%"
-
-c1.metric("ARR", f"£{latest['arr']/1000:,.2f}M", get_delta_val(latest['arr'], prev['arr']))
-c2.metric("NRR", f"{latest['nrr_pct']:.0f}%", get_delta_val(latest['nrr_pct'], prev['nrr_pct']))
-c3.metric("Gross Margin", f"{latest['gross_margin_pct']:.0f}%", get_delta_val(latest['gross_margin_pct'], prev['gross_margin_pct']))
-c4.metric("Rule of 40", f"{latest['rule_of_40']:.0f}", get_delta_val(latest['rule_of_40'], prev['rule_of_40']))
-c5.metric("Runway", f"{latest['runway_months']:.0f}mo", get_delta_val(latest['runway_months'], prev['runway_months']))
-c6.metric("Pipeline Coverage", f"{latest['pipeline_coverage']:.1f}x", get_delta_val(latest['pipeline_coverage'], prev['pipeline_coverage']))
+if "alpha" in selected_portco.lower():
+    # Advanced Alpha View (Hospitality SaaS)
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    c1.metric("Live ARR", f"£{latest['arr']/1000:,.2f}M", get_delta_val(latest['arr'], prev['arr']))
+    
+    # Implementation Backlog Calculation
+    carr = latest.get('carr', latest['arr'])
+    backlog = max(0, carr - latest['arr'])
+    c2.metric("Contracted ARR (CARR)", f"£{carr/1000:,.2f}M", help="Includes signed but not yet live deals")
+    c3.metric("Backlog (Trapped)", f"£{backlog/1000:,.0f}k", delta="Backlog", delta_color="inverse")
+    
+    c4.metric("Tech GM%", f"{latest.get('tech_gross_margin_pct', 0):.1f}%", help="Pure Software Margin")
+    c5.metric("NRR", f"{latest['nrr_pct']:.0f}%", get_delta_val(latest['nrr_pct'], prev['nrr_pct']))
+    c6.metric("Rule of 40", f"{latest['rule_of_40']:.0f}", get_delta_val(latest['rule_of_40'], prev['rule_of_40']))
+else:
+    # Standard Standard View
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    c1.metric("ARR", f"£{latest['arr']/1000:,.2f}M", get_delta_val(latest['arr'], prev['arr']))
+    c2.metric("NRR", f"{latest['nrr_pct']:.0f}%", get_delta_val(latest['nrr_pct'], prev['nrr_pct']))
+    c3.metric("Gross Margin", f"{latest['gross_margin_pct']:.1f}%", get_delta_val(latest['gross_margin_pct'], prev['gross_margin_pct']))
+    c4.metric("Rule of 40", f"{latest['rule_of_40']:.0f}", get_delta_val(latest['rule_of_40'], prev['rule_of_40']))
+    c5.metric("Runway", f"{latest['runway_months']:.0f}mo", get_delta_val(latest['runway_months'], prev['runway_months']))
+    c6.metric("Pipeline Coverage", f"{latest['pipeline_coverage']:.1f}x", get_delta_val(latest['pipeline_coverage'], prev['pipeline_coverage']))
 
 # ============================================================
 # ARR BRIDGE SECTION
