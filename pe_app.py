@@ -305,6 +305,43 @@ with t2:
     st.plotly_chart(fig_pipe, use_container_width=True)
 
 # ============================================================
+# ADVANCED ANALYTICS (PORTCO ALPHA SPECIFIC)
+# ============================================================
+if "alpha" in selected_portco.lower():
+    st.markdown("<div class='kpi-section-title'>Advanced SaaS Analytics (Alpha Only)</div>", unsafe_allow_html=True)
+    
+    a1, a2 = st.columns(2)
+    
+    with a1:
+        # Debtor Aging & NWC Chart
+        debtor_aging = pd.DataFrame({
+            "Aging": ["< 30 Days", "30-60 Days", "90+ Days"],
+            "Value": [latest.get('debtors_30d', 120), latest.get('debtors_60d', 45), latest.get('debtors_90d', 12)]
+        })
+        fig_nwc = px.bar(debtor_aging, x="Aging", y="Value", title="Accounts Receivable — Aging (£k)", color="Aging",
+                        color_discrete_sequence=['#10b981', '#f59e0b', '#ef4444'])
+        fig_nwc.update_layout(plot_bgcolor='white', paper_bgcolor='white', height=350, showlegend=False)
+        st.plotly_chart(fig_nwc, use_container_width=True)
+        st.caption(f"Total NWC Estimate: £{latest.get('nwc', 450):,.0f}k. High concentration in 90+ days can trigger a cash crunch.")
+
+    with a2:
+        # Module Movements Chart (MoM Net Change)
+        modules = pd.DataFrame({
+            "Module": ["Rooms", "Spa", "F&B", "Vouchers"],
+            "Net Change": [
+                latest.get('rooms_module_delta', 12), 
+                latest.get('spa_module_delta', -2), 
+                latest.get('f_b_module_delta', 5), 
+                latest.get('vouchers_module_delta', 8)
+            ]
+        })
+        fig_mod = px.bar(modules, x="Net Change", y="Module", orientation='h', title="Module movements (Net Change)",
+                        color="Net Change", color_continuous_scale='RdYlGn')
+        fig_mod.update_layout(plot_bgcolor='white', paper_bgcolor='white', height=350)
+        st.plotly_chart(fig_mod, use_container_width=True)
+        st.caption("Tracks Land-and-Expand success across the portfolio.")
+
+# ============================================================
 # RAG STATUS TABLE SECTION
 # ============================================================
 st.markdown("<div class='kpi-section-title'>RAG status — all KPIs vs benchmark</div>", unsafe_allow_html=True)
