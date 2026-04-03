@@ -1,10 +1,9 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
 import plotly.graph_objects as go
-from google.cloud import bigquery
 from datetime import datetime
+import os
 
 # ============================================================
 # PAGE CONFIG
@@ -12,36 +11,34 @@ from datetime import datetime
 st.set_page_config(
     page_title="Averroes Capital - Portfolio KPI Dashboard",
     layout="wide",
-    page_icon="🏦"
+    page_icon="📊"
 )
 
 PROJECT_ID = "averroes-portfolio-intel"
 
 # ============================================================
-# DESIGN SYSTEM - Premium Executive Theme (Navy & White)
+# DESIGN SYSTEM - Executive Theme (Navy & White)
 # ============================================================
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    
+
     html, body, [data-testid="stAppViewContainer"] {
         background-color: #fcfcfc !important;
         font-family: 'Inter', sans-serif;
     }
-    
+
     .main-header {
         font-size: 2.2rem;
         font-weight: 700;
         color: #0f172a;
         margin-bottom: 0px;
     }
-    
     .sub-header {
         font-size: 0.9rem;
         color: #64748b;
         margin-bottom: 30px;
     }
-    
     .kpi-section-title {
         font-size: 1.1rem;
         font-weight: 600;
@@ -51,30 +48,26 @@ st.markdown("""
         margin-top: 20px;
         margin-bottom: 25px;
     }
-    
-    /* KPI Card Styling */
+
     div[data-testid="stMetric"] {
         background-color: #ffffff;
         border: 1px solid #e2e8f0;
         padding: 20px !important;
         border-radius: 4px;
     }
-    
     [data-testid="stMetricValue"] {
         color: #0f172a !important;
-        font-size: 2.2rem !important;
+        font-size: 2rem !important;
         font-weight: 700 !important;
     }
-    
     [data-testid="stMetricLabel"] {
-        font-size: 0.8rem !important;
+        font-size: 0.75rem !important;
         font-weight: 600 !important;
         text-transform: uppercase;
         letter-spacing: 0.05em;
         color: #64748b !important;
     }
-    
-    /* RAG Status Indicators */
+
     .status-badge {
         padding: 2px 8px;
         border-radius: 12px;
@@ -85,275 +78,561 @@ st.markdown("""
     .status-on-track { background-color: #dcfce7; color: #166534; }
     .status-watch { background-color: #fef9c3; color: #854d0e; }
     .status-below { background-color: #fee2e2; color: #991b1b; }
-    
+
     </style>
 """, unsafe_allow_html=True)
 
+
 # ============================================================
-# DATA LOADING - PRODUCTION WITH DUMMY FALLBACK
+# HELPER FUNCTIONS
+# ============================================================
+def fmt_gbp_k(val, decimals=1):
+    """Format as £Xk (thousands)."""
+    if pd.isna(val): return "—"
+    return f"£{val:,.{decimals}f}k"
+
+def fmt_gbp(val, decimals=0):
+    """Format as full £ value."""
+    if pd.isna(val): return "—"
+    return f"£{val:,.{decimals}f}"
+
+def fmt_pct(val, decimals=1):
+    """Format as percentage."""
+    if pd.isna(val): return "—"
+    return f"{val:,.{decimals}f}%"
+
+def fmt_num(val, decimals=1):
+    """Format number."""
+    if pd.isna(val): return "—"
+    return f"{val:,.{decimals}f}"
+
+def fmt_months(val, decimals=1):
+    if pd.isna(val): return "—"
+    return f"{val:,.{decimals}f} mo"
+
+def delta_pct(actual, comparator):
+    """Calculate delta as percentage string for st.metric."""
+    if pd.isna(actual) or pd.isna(comparator) or comparator == 0:
+        return None
+    delta = ((actual - comparator) / abs(comparator)) * 100
+    return f"{delta:+.1f}%"
+
+def rag_status(actual, budget, higher_is_better=True):
+    """Return RAG status based on actual vs budget."""
+    if pd.isna(actual) or pd.isna(budget) or budget == 0:
+        return "grey"
+    ratio = actual / budget if higher_is_better else budget / actual
+    if ratio >= 0.95: return "green"
+    elif ratio >= 0.85: return "amber"
+    else: return "red"
+
+def get_anomalies(row):
+    """Detect critical PE red flags and return a list of actionable alerts."""
+    alerts = []
+    
+    # 1. Cash Runway (Critical Liquidity)
+    runway = row.get('cash_runway_months')
+    if pd.notna(runway) and runway < 12:
+        severity = "🔴 CRITICAL" if runway < 6 else "🟡 WARNING"
+        alerts.append({
+            "level": severity,
+            "metric": "Cash Runway",
+            "message": f"Runway is only {runway:.1f} months. Cash balance £{row.get('cash_balance', 0):,.0f} vs monthly burn.",
+            "action": "Immediate board trigger. Review liquidity and bridge funding options."
+        })
+
+    # 2. Tech Gross Margin Erosion (Scalability Risk)
+    tgm = row.get('tech_gross_margin_pct')
+    if pd.notna(tgm) and tgm < 75:
+        alerts.append({
+            "level": "🟡 WARNING",
+            "metric": "Tech Gross Margin",
+            "message": f"Margin at {tgm:.1f}% is below SaaS benchmark (80%+).",
+            "action": "COGS creep detected. Audit hosting and support staffing levels."
+        })
+
+    # 3. Revenue Retention (Churn Wave)
+    nrr = row.get('revenue_churn_pct') # In this schema churn is stored; check if NRR is derived
+    if pd.notna(nrr) and nrr > 5:
+        alerts.append({
+            "level": "🔴 CRITICAL",
+            "metric": "Monthly Churn",
+            "message": f"Revenue churn spiked to {nrr:.1f}% this month.",
+            "action": "Churn wave incoming. Pull cohort data and review Top 10 customer health."
+        })
+
+    # 4. Rule of 40 (Efficiency Drift)
+    r40 = row.get('rule_of_40')
+    if pd.notna(r40) and r40 < 0.20:
+        alerts.append({
+            "level": "🟡 WARNING",
+            "metric": "Rule of 40",
+            "message": f"Efficiency score ({r40:.2f}) fallen below 20%.",
+            "action": "Growth or profitability is structurally broken. Diagnose root cause."
+        })
+
+    return alerts
+
+# ============================================================
+# DATA LOADING
 # ============================================================
 @st.cache_data(ttl=600)
 def load_data():
-    """
-    Load data from BigQuery for live companies.
-    Falls back to gold_dummy_data.csv for 'Portco Dummy' demonstration.
-    """
+    """Load from BigQuery, fall back to local CSV."""
     try:
-        # Check for Streamlit Secrets (for Cloud Deployment)
+        from google.cloud import bigquery
         if "gcp_service_account" in st.secrets:
             from google.oauth2 import service_account
             info = st.secrets["gcp_service_account"]
             credentials = service_account.Credentials.from_service_account_info(info)
             client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
         else:
-            # Local fallback (ADC)
             client = bigquery.Client(project=PROJECT_ID)
-            
+
         query = f"SELECT * FROM `{PROJECT_ID}.gold.kpi_monthly` ORDER BY period ASC"
         df_bq = client.query(query).to_dataframe()
-        
-        # Load local dummy data for demonstration purposes
-        df_dummy = pd.read_csv("gold_dummy_data.csv")
-        df_dummy['period'] = pd.to_datetime(df_dummy['period'])
-        
-        # Combine - BigQuery is the primary source of truth, Dummy added for UI testing
+
         if not df_bq.empty:
-            df = pd.concat([df_bq, df_dummy], ignore_index=True)
-            df['period'] = pd.to_datetime(df['period']) # Normalize all to Timestamps
-            return df, "connected"
-        else:
-            return df_dummy, "demo_only"
-            
+            df_bq['period'] = pd.to_datetime(df_bq['period'])
+            return df_bq, "connected"
     except Exception as e:
-        # If BigQuery fails, only show dummy data
         print(f"BigQuery Connection Issue: {e}")
-        try:
-            df_dummy = pd.read_csv("gold_dummy_data.csv")
-            df_dummy['period'] = pd.to_datetime(df_dummy['period'])
-            return df_dummy, "demo_only"
-        except:
-            return pd.DataFrame(), "error"
+
+    # Fallback to local CSV
+    try:
+        csv_path = os.path.join(os.path.dirname(__file__), "gold_phase1_data.csv")
+        df = pd.read_csv(csv_path)
+        df['period'] = pd.to_datetime(df['period'])
+        return df, "csv_fallback"
+    except Exception as e2:
+        print(f"CSV fallback failed: {e2}")
+        return pd.DataFrame(), "error"
+
 
 df_raw, data_status = load_data()
 
 # ============================================================
-# SIDEBAR FILTERS
+# SIDEBAR
 # ============================================================
-st.sidebar.title("🏦 Averroes Capital")
+st.sidebar.title("📊 Averroes Capital")
 st.sidebar.markdown("Portfolio Intelligence Platform")
 st.sidebar.markdown("---")
 
-if not df_raw.empty:
-    portco_list = sorted(df_raw['portco_id'].unique())
-    selected_portco = st.sidebar.selectbox("Select Portfolio Company", portco_list)
-
-    # Filter by Company
-    pc_df = df_raw[df_raw['portco_id'] == selected_portco]
-
-    # Dynamic Product Filter (only if multiple products exist)
-    unique_prods = sorted(pc_df['product_id'].dropna().unique())
-    if len(unique_prods) > 1:
-        product_list = ["Aggregate View"] + list(unique_prods)
-        selected_product = st.sidebar.selectbox("Select Product Vertical", product_list)
-        
-        if selected_product != "Aggregate View":
-            filtered_df = pc_df[pc_df['product_id'] == selected_product]
-        else:
-            filtered_df = pc_df
-    else:
-        filtered_df = pc_df
-        selected_product = unique_prods[0] if unique_prods else "All"
-else:
-    st.error("No data found in Gold Layer or gold_dummy_data.csv")
+if df_raw.empty:
+    st.error("No data available. Check BigQuery connection or gold_phase1_data.csv.")
     st.stop()
 
+portco_list = sorted(df_raw['portco_id'].unique())
+selected_portco = st.sidebar.selectbox("Select Portfolio Company", portco_list)
+pc_df = df_raw[df_raw['portco_id'] == selected_portco].copy()
+
+if pc_df.empty:
+    st.warning(f"No data for {selected_portco}")
+    st.stop()
+
+# Period selector
+periods = sorted(pc_df['period'].unique())
+latest_period = periods[-1]
+selected_period = st.sidebar.selectbox(
+    "Reporting Period",
+    periods,
+    index=len(periods) - 1,
+    format_func=lambda x: pd.Timestamp(x).strftime('%B %Y')
+)
+
+row = pc_df[pc_df['period'] == selected_period].iloc[0]
+
 st.sidebar.markdown("---")
-# Grouping Logic for Aggregation
-numeric_cols = filtered_df.select_dtypes(include=[np.number]).columns
-view_df = filtered_df.groupby('period')[numeric_cols].mean().reset_index().sort_values('period')
-# Note: For ARR Bridge, we sum instead of mean
-view_df['arr'] = filtered_df.groupby('period')['arr'].sum().values
-view_df['opening_arr'] = filtered_df.groupby('period')['opening_arr'].sum().values
-view_df['new_arr'] = filtered_df.groupby('period')['new_arr'].sum().values
-view_df['expansion_arr'] = filtered_df.groupby('period')['expansion_arr'].sum().values
-view_df['churn_arr'] = filtered_df.groupby('period')['churn_arr'].sum().values
-view_df['closing_arr'] = filtered_df.groupby('period')['closing_arr'].sum().values
-
-if data_status == "connected":
-    st.sidebar.success("✅ Connected to BigQuery Gold Layer")
-else:
-    st.sidebar.warning("⚠️ Using local gold_dummy_data.csv")
-
-st.sidebar.caption(f"Last updated: {datetime.now().strftime('%H:%M:%S')}")
-@st.cache_data
-def get_delta_val(curr, prev):
-    if prev == 0 or pd.isna(prev): return "0.0%"
-    diff = ((curr / prev) - 1) * 100
-    return f"{diff:+.1f}%"
-
-latest = view_df.iloc[-1]
-prev = view_df.iloc[-2] if len(view_df) > 1 else latest
+status_label = "🟢 BigQuery Live" if data_status == "connected" else "🟡 CSV Fallback"
+st.sidebar.caption(f"Data: {status_label}")
+st.sidebar.caption(f"Period: {row.get('fy', '')} {row.get('fy_quarter', '')} (Month {int(row.get('fy_month_num', 0))})")
 
 # ============================================================
 # HEADER
 # ============================================================
-st.markdown(f"<div class='main-header'>{selected_portco} — KPI Dashboard</div>", unsafe_allow_html=True)
-st.markdown(f"<div class='sub-header'>Reporting period: {latest['period'].strftime('%B %Y')} &nbsp;•&nbsp; Prepared by: GP team &nbsp;•&nbsp; All figures £000s unless stated</div>", unsafe_allow_html=True)
+display_name = selected_portco.replace("portco-", "").title()
+period_str = pd.Timestamp(selected_period).strftime('%B %Y')
+
+st.markdown(f'<div class="main-header">{display_name} — Monthly Board Pack</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="sub-header">{row.get("fy", "")} {row.get("fy_quarter", "")} | {period_str} | Currency: GBP</div>', unsafe_allow_html=True)
+# ============================================================
+# ANOMALY & RISK ALERTS
+# ============================================================
+alerts = get_anomalies(row)
+if alerts:
+    with st.expander("🚨 CRITICAL PORTFOLIO ALERTS DETECTED", expanded=True):
+        for a in alerts:
+            col_l, col_r = st.columns([1, 4])
+            with col_l:
+                st.markdown(f"**{a['level']}**")
+                st.caption(a['metric'])
+            with col_r:
+                st.markdown(a['message'])
+                st.info(f"**Recommended Action:** {a['action']}")
+        st.markdown("---")
 
 # ============================================================
-# EXECUTIVE SUMMARY SECTION
+# EXECUTIVE SUMMARY - Top-line KPIs
 # ============================================================
-st.markdown("<div class='kpi-section-title'>Executive summary — key metrics</div>", unsafe_allow_html=True)
+st.markdown('<div class="kpi-section-title">Executive Summary</div>', unsafe_allow_html=True)
 
-if "alpha" in selected_portco.lower():
-    # Advanced Alpha View (Hospitality SaaS)
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
-    c1.metric("Live ARR", f"£{latest['arr']/1000:,.2f}M", get_delta_val(latest['arr'], prev['arr']))
-    
-    # Implementation Backlog Calculation
-    carr = latest.get('carr', latest['arr'])
-    backlog = max(0, carr - latest['arr'])
-    c2.metric("Contracted ARR (CARR)", f"£{carr/1000:,.2f}M", help="Includes signed but not yet live deals")
-    c3.metric("Backlog (Trapped)", f"£{backlog/1000:,.0f}k", delta="Backlog", delta_color="inverse")
-    
-    c4.metric("Tech GM%", f"{latest.get('tech_gross_margin_pct', 0):.1f}%", help="Pure Software Margin")
-    c5.metric("NRR", f"{latest['nrr_pct']:.0f}%", get_delta_val(latest['nrr_pct'], prev['nrr_pct']))
-    c6.metric("Rule of 40", f"{latest['rule_of_40']:.0f}", get_delta_val(latest['rule_of_40'], prev['rule_of_40']))
-else:
-    # Standard Standard View
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
-    c1.metric("ARR", f"£{latest['arr']/1000:,.2f}M", get_delta_val(latest['arr'], prev['arr']))
-    c2.metric("NRR", f"{latest['nrr_pct']:.0f}%", get_delta_val(latest['nrr_pct'], prev['nrr_pct']))
-    c3.metric("Gross Margin", f"{latest['gross_margin_pct']:.1f}%", get_delta_val(latest['gross_margin_pct'], prev['gross_margin_pct']))
-    c4.metric("Rule of 40", f"{latest['rule_of_40']:.0f}", get_delta_val(latest['rule_of_40'], prev['rule_of_40']))
-    c5.metric("Runway", f"{latest['runway_months']:.0f}mo", get_delta_val(latest['runway_months'], prev['runway_months']))
-    c6.metric("Pipeline Coverage", f"{latest['pipeline_coverage']:.1f}x", get_delta_val(latest['pipeline_coverage'], prev['pipeline_coverage']))
+c1, c2, c3, c4, c5 = st.columns(5)
+
+with c1:
+    st.metric(
+        "Total ARR",
+        fmt_gbp(row.get('total_arr')),
+        delta_pct(row.get('total_arr'), row.get('total_arr') * 0.9) if pd.notna(row.get('total_arr')) else None
+    )
+with c2:
+    st.metric(
+        "Monthly Revenue",
+        fmt_gbp_k(row.get('revenue_total_actual')),
+        delta_pct(row.get('revenue_total_actual'), row.get('revenue_total_budget'))
+    )
+with c3:
+    st.metric(
+        "EBITDA",
+        fmt_gbp_k(row.get('ebitda_actual')),
+        delta_pct(row.get('ebitda_actual'), row.get('ebitda_budget'))
+    )
+with c4:
+    st.metric(
+        "Cash Balance",
+        fmt_gbp(row.get('cash_balance')),
+    )
+with c5:
+    st.metric(
+        "Rule of 40",
+        fmt_pct(row.get('rule_of_40') * 100 if pd.notna(row.get('rule_of_40')) else None),
+    )
+
 
 # ============================================================
-# ARR BRIDGE SECTION
+# SECTION A: ARR / MRR / Scale
 # ============================================================
-st.markdown("<div class='kpi-section-title'>ARR bridge — " + latest['period'].strftime('%B %Y') + "</div>", unsafe_allow_html=True)
-st.caption("Read this chart first. New + expansion ARR versus churn defines the health of the revenue engine. Expansion exceeding churn = land-and-expand working.")
+st.markdown('<div class="kpi-section-title">A. ARR / MRR / Scale</div>', unsafe_allow_html=True)
 
-# ARR Waterfall Chart
-fig_waterfall = go.Figure(go.Waterfall(
-    name = "ARR Bridge", orientation = "v",
-    measure = ["relative", "relative", "relative", "relative", "total"],
-    x = ["Opening ARR", "New ARR", "Expansion", "Churn", "Closing ARR"],
-    textposition = "outside",
-    text = [f"£{x:,.0f}" for x in [latest['opening_arr'], latest['new_arr'], latest['expansion_arr'], latest['churn_arr'], latest['closing_arr']]],
-    y = [latest['opening_arr'], latest['new_arr'], latest['expansion_arr'], latest['churn_arr'], latest['closing_arr']],
-    connector = {"line":{"color":"rgb(63, 63, 63)"}},
-    increasing = {"marker":{"color":"#10b981"}}, # Green
-    decreasing = {"marker":{"color":"#ef4444"}}, # Red
-    totals = {"marker":{"color":"#1e3a8a"}} # Navy
-))
+a1, a2, a3, a4 = st.columns(4)
+with a1:
+    st.metric("Tech MRR", fmt_gbp(row.get('tech_mrr_actual')),
+              delta_pct(row.get('tech_mrr_actual'), row.get('tech_mrr_budget')))
+with a2:
+    st.metric("Services MRR", fmt_gbp(row.get('services_mrr_actual')),
+              delta_pct(row.get('services_mrr_actual'), row.get('services_mrr_budget')))
+with a3:
+    st.metric("Total MRR", fmt_gbp(row.get('total_mrr_actual')))
+with a4:
+    st.metric("Tech ARR", fmt_gbp(row.get('tech_arr')))
 
-fig_waterfall.update_layout(
-    title = "ARR waterfall — new, expansion, churn, net",
-    showlegend = False,
-    plot_bgcolor='rgba(0,0,0,0)',
-    paper_bgcolor='white',
-    height=400,
-    margin=dict(t=50, b=20, l=20, r=20)
+a5, a6, a7, a8 = st.columns(4)
+with a5:
+    st.metric("Services ARR", fmt_gbp(row.get('services_arr')))
+with a6:
+    st.metric("CARR", fmt_gbp(row.get('carr')))
+with a7:
+    st.metric("Rev vs Budget", fmt_pct(row.get('revenue_vs_budget_pct')))
+with a8:
+    st.metric("Rev YoY Growth", fmt_pct(row.get('revenue_yoy_growth_pct')))
+
+
+# Revenue Breakdown Chart
+st.markdown("**Revenue Breakdown (£k) — Actual vs Budget**")
+rev_cats = ['Ecommerce', 'EMS', 'Services']
+rev_actual = [row.get('revenue_ecommerce_actual', 0), row.get('revenue_ems_actual', 0), row.get('revenue_services_actual', 0)]
+rev_budget = [row.get('revenue_ecommerce_budget', 0), row.get('revenue_ems_budget', 0), row.get('revenue_services_budget', 0)]
+
+fig_rev = go.Figure()
+fig_rev.add_trace(go.Bar(name='Actual', x=rev_cats, y=rev_actual, marker_color='#0ea5e9'))
+fig_rev.add_trace(go.Bar(name='Budget', x=rev_cats, y=rev_budget, marker_color='#cbd5e1'))
+fig_rev.update_layout(
+    barmode='group', height=300,
+    margin=dict(l=40, r=20, t=20, b=40),
+    legend=dict(orientation='h', y=1.12),
+    yaxis_title='£k',
+    plot_bgcolor='white',
+    font=dict(family='Inter')
 )
-fig_waterfall.update_yaxes(showgrid=True, gridcolor='#f1f5f9')
+st.plotly_chart(fig_rev, use_container_width=True)
 
+
+# ============================================================
+# SECTION B: Unit Economics / Margins
+# ============================================================
+st.markdown('<div class="kpi-section-title">B. Unit Economics / ARPC / Margins</div>', unsafe_allow_html=True)
+
+b1, b2, b3, b4 = st.columns(4)
+with b1:
+    st.metric("ARPC (Actual)", fmt_gbp(row.get('arpc_actual')),
+              delta_pct(row.get('arpc_actual'), row.get('arpc_budget')))
+with b2:
+    st.metric("S&M Efficiency", fmt_pct(row.get('sm_efficiency', 0) * 100 if pd.notna(row.get('sm_efficiency')) else None))
+with b3:
+    st.metric("Tech Gross Margin", fmt_pct(row.get('tech_gross_margin_pct')))
+with b4:
+    st.metric("EBITDA Margin", fmt_pct(row.get('ebitda_margin_pct')))
+
+b5, b6, b7, b8 = st.columns(4)
+with b5:
+    st.metric("Contribution Margin", fmt_pct(row.get('contribution_margin_pct')))
+with b6:
+    st.metric("Direct Costs", fmt_gbp_k(row.get('direct_costs_total')))
+with b7:
+    st.metric("Total Overheads", fmt_gbp_k(row.get('total_overheads')))
+with b8:
+    st.metric("Capex", fmt_gbp_k(row.get('capex')))
+
+
+# Margin comparison chart
+st.markdown("**Margin Comparison — Actual vs Budget vs Prior Year**")
+margin_labels = ['Tech GM%', 'EBITDA Margin%', 'Contribution Margin%']
+margin_actual = [row.get('tech_gross_margin_pct', 0), row.get('ebitda_margin_pct', 0), row.get('contribution_margin_pct', 0)]
+margin_budget = [row.get('tech_gross_margin_budget_pct', 0), row.get('ebitda_margin_budget_pct', 0), 0]
+margin_py = [row.get('tech_gross_margin_prior_pct', 0), row.get('ebitda_margin_prior_pct', 0), 0]
+
+fig_margin = go.Figure()
+fig_margin.add_trace(go.Bar(name='Actual', x=margin_labels, y=margin_actual, marker_color='#0ea5e9'))
+fig_margin.add_trace(go.Bar(name='Budget', x=margin_labels, y=margin_budget, marker_color='#cbd5e1'))
+fig_margin.add_trace(go.Bar(name='Prior Year', x=margin_labels, y=margin_py, marker_color='#fbbf24'))
+fig_margin.update_layout(
+    barmode='group', height=300,
+    margin=dict(l=40, r=20, t=20, b=40),
+    legend=dict(orientation='h', y=1.12),
+    yaxis_title='%',
+    plot_bgcolor='white',
+    font=dict(family='Inter')
+)
+st.plotly_chart(fig_margin, use_container_width=True)
+
+
+# ============================================================
+# SECTION C: P&L Waterfall
+# ============================================================
+st.markdown('<div class="kpi-section-title">P&L Waterfall (£k)</div>', unsafe_allow_html=True)
+
+waterfall_labels = ['Revenue', 'Direct Costs', 'Gross Profit', 'Overheads', 'EBITDA', 'Capex', 'EBITDA less Capex']
+waterfall_values = [
+    row.get('revenue_total_actual', 0),
+    -abs(row.get('direct_costs_total', 0)),
+    row.get('gross_profit_total', 0) if pd.notna(row.get('gross_profit_total')) else (row.get('revenue_total_actual', 0) - abs(row.get('direct_costs_total', 0))),
+    row.get('total_overheads', 0),
+    row.get('ebitda_actual', 0),
+    row.get('capex', 0),
+    row.get('ebitda_less_capex', 0)
+]
+waterfall_measures = ['absolute', 'relative', 'total', 'relative', 'total', 'relative', 'total']
+
+fig_waterfall = go.Figure(go.Waterfall(
+    name="P&L", orientation="v",
+    measure=waterfall_measures,
+    x=waterfall_labels,
+    y=waterfall_values,
+    connector={"line": {"color": "#e2e8f0"}},
+    increasing={"marker": {"color": "#0ea5e9"}},
+    decreasing={"marker": {"color": "#ef4444"}},
+    totals={"marker": {"color": "#0f172a"}},
+    textposition="outside",
+    text=[fmt_gbp_k(v) for v in waterfall_values]
+))
+fig_waterfall.update_layout(
+    height=350, margin=dict(l=40, r=20, t=20, b=40),
+    plot_bgcolor='white', font=dict(family='Inter'),
+    showlegend=False
+)
 st.plotly_chart(fig_waterfall, use_container_width=True)
 
-# ============================================================
-# TREND ANALYSIS SECTION
-# ============================================================
-st.markdown("<div class='kpi-section-title'>Trend analysis — 6-month view</div>", unsafe_allow_html=True)
-
-t1, t2 = st.columns(2)
-
-with t1:
-    # ARR Progression Area Chart
-    fig_arr = px.area(view_df, x="period", y="arr", title="ARR progression (£k)")
-    fig_arr.update_traces(line_color='#0ea5e9', fillcolor='rgba(14, 165, 233, 0.1)')
-    fig_arr.update_layout(plot_bgcolor='white', paper_bgcolor='white', height=300)
-    fig_arr.update_xaxes(title="", showgrid=False)
-    fig_arr.update_yaxes(title="", gridcolor='#f1f5f9')
-    st.plotly_chart(fig_arr, use_container_width=True)
-    
-    # Gross Margin & Rule of 40
-    fig_gm_r40 = go.Figure()
-    fig_gm_r40.add_trace(go.Scatter(x=view_df['period'], y=view_df['gross_margin_pct'], name="Gross Margin %", line=dict(color='#6366f1', width=3)))
-    fig_gm_r40.add_trace(go.Scatter(x=view_df['period'], y=view_df['rule_of_40'], name="Rule of 40", line=dict(color='#0ea5e9', width=3)))
-    fig_gm_r40.update_layout(title="Gross margin & Rule of 40", plot_bgcolor='white', paper_bgcolor='white', height=300, legend=dict(orientation="h", y=1.1))
-    fig_gm_r40.update_xaxes(showgrid=False)
-    fig_gm_r40.update_yaxes(gridcolor='#f1f5f9')
-    st.plotly_chart(fig_gm_r40, use_container_width=True)
-
-with t2:
-    # NRR & GRR Dual Line
-    fig_ret = go.Figure()
-    fig_ret.add_trace(go.Scatter(x=view_df['period'], y=view_df['nrr_pct'], name="NRR %", line=dict(color='#059669', width=3)))
-    fig_ret.add_trace(go.Scatter(x=view_df['period'], y=view_df['grr_pct'], name="GRR %", line=dict(color='#059669', width=2, dash='dot')))
-    fig_ret.update_layout(title="NRR & GRR (%)", plot_bgcolor='white', paper_bgcolor='white', height=300, legend=dict(orientation="h", y=1.1))
-    fig_ret.update_xaxes(showgrid=False)
-    fig_ret.update_yaxes(gridcolor='#f1f5f9')
-    st.plotly_chart(fig_ret, use_container_width=True)
-
-    # Pipeline Coverage & Quota
-    fig_pipe = go.Figure()
-    fig_pipe.add_trace(go.Scatter(x=view_df['period'], y=view_df['pipeline_coverage'], name="Pipeline Coverage (x)", line=dict(color='#854d0e', width=3)))
-    fig_pipe.update_layout(title="Pipeline coverage", plot_bgcolor='white', paper_bgcolor='white', height=300)
-    fig_pipe.update_xaxes(showgrid=False)
-    fig_pipe.update_yaxes(gridcolor='#f1f5f9')
-    st.plotly_chart(fig_pipe, use_container_width=True)
 
 # ============================================================
-# ADVANCED ANALYTICS (PORTCO ALPHA SPECIFIC)
+# SECTION C: Retention / Churn
 # ============================================================
-if "alpha" in selected_portco.lower():
-    st.markdown("<div class='kpi-section-title'>Advanced SaaS Analytics (Alpha Only)</div>", unsafe_allow_html=True)
-    
-    a1, a2 = st.columns(2)
-    
-    with a1:
-        # Debtor Aging & NWC Chart
-        debtor_aging = pd.DataFrame({
-            "Aging": ["< 30 Days", "30-60 Days", "90+ Days"],
-            "Value": [latest.get('debtors_30d', 120), latest.get('debtors_60d', 45), latest.get('debtors_90d', 12)]
-        })
-        fig_nwc = px.bar(debtor_aging, x="Aging", y="Value", title="Accounts Receivable — Aging (£k)", color="Aging",
-                        color_discrete_sequence=['#10b981', '#f59e0b', '#ef4444'])
-        fig_nwc.update_layout(plot_bgcolor='white', paper_bgcolor='white', height=350, showlegend=False)
-        st.plotly_chart(fig_nwc, use_container_width=True)
-        st.caption(f"Total NWC Estimate: £{latest.get('nwc', 450):,.0f}k. High concentration in 90+ days can trigger a cash crunch.")
+st.markdown('<div class="kpi-section-title">C. Retention / Churn</div>', unsafe_allow_html=True)
 
-    with a2:
-        # Module Movements Chart (MoM Net Change)
-        modules = pd.DataFrame({
-            "Module": ["Rooms", "Spa", "F&B", "Vouchers"],
-            "Net Change": [
-                latest.get('rooms_module_delta', 12), 
-                latest.get('spa_module_delta', -2), 
-                latest.get('f_b_module_delta', 5), 
-                latest.get('vouchers_module_delta', 8)
-            ]
-        })
-        fig_mod = px.bar(modules, x="Net Change", y="Module", orientation='h', title="Module movements (Net Change)",
-                        color="Net Change", color_continuous_scale='RdYlGn')
-        fig_mod.update_layout(plot_bgcolor='white', paper_bgcolor='white', height=350)
-        st.plotly_chart(fig_mod, use_container_width=True)
-        st.caption("Tracks Land-and-Expand success across the portfolio.")
+c1, c2, c3, c4 = st.columns(4)
+with c1:
+    churn_val = row.get('revenue_churn_pct')
+    target_val = row.get('revenue_churn_target')
+    churn_display = fmt_pct(churn_val * 100 if pd.notna(churn_val) else None)
+    target_display = f"Target: {fmt_pct(target_val * 100 if pd.notna(target_val) else None)}"
+    st.metric("Revenue Churn %", churn_display, target_display)
+with c2:
+    st.metric("CAC", fmt_gbp(row.get('cac')))
+with c3:
+    st.metric("CAC Payback", fmt_months(row.get('cac_payback_months')))
+with c4:
+    st.metric("LTV:CAC Ratio", fmt_num(row.get('ltv_cac_ratio'), 2))
+
 
 # ============================================================
-# RAG STATUS TABLE SECTION
+# SECTION D: Product Usage / Properties
 # ============================================================
-st.markdown("<div class='kpi-section-title'>RAG status — all KPIs vs benchmark</div>", unsafe_allow_html=True)
+st.markdown('<div class="kpi-section-title">D. Product Usage / Modules</div>', unsafe_allow_html=True)
 
-rag_data = [
-    {"Metric": "ARR", "Latest": f"£{latest['arr']/1000:.2f}M", "Prior Month": f"£{prev['arr']/1000:.2f}M", "MoM Change": f"{(latest['arr']-prev['arr']):+,.0f}k", "Benchmark": "—", "Status": "ON TRACK", "Trend Signal": "Rising consistently."},
-    {"Metric": "NRR", "Latest": f"{latest['nrr_pct']:.0f}%", "Prior Month": f"{prev['nrr_pct']:.0f}%", "MoM Change": f"{(latest['nrr_pct']-prev['nrr_pct']):+.1f}%", "Benchmark": "110%", "Status": "WATCH", "Trend Signal": "Trending toward 110% target."},
-    {"Metric": "GRR", "Latest": f"{latest['grr_pct']:.0f}%", "Prior Month": f"{prev['grr_pct']:.0f}%", "MoM Change": f"{(latest['grr_pct']-prev['grr_pct']):+.1f}%", "Benchmark": "90%", "Status": "ON TRACK", "Trend Signal": "Solid improvement trend."},
-    {"Metric": "Gross Margin", "Latest": f"{latest['gross_margin_pct']:.0f}%", "Prior Month": f"{prev['gross_margin_pct']:.0f}%", "MoM Change": f"{(latest['gross_margin_pct']-prev['gross_margin_pct']):+.1f}%", "Benchmark": "70%", "Status": "ON TRACK", "Trend Signal": "Infrastructure optimization contributing."},
-    {"Metric": "Net Burn", "Latest": f"£{latest['net_burn']:.0f}k", "Prior Month": f"£{prev['net_burn']:.0f}k", "MoM Change": f"{(latest['net_burn']-prev['net_burn']):+.1f}k", "Benchmark": "—", "Status": "ON TRACK", "Trend Signal": "Burn multiple improving."},
-    {"Metric": "Runway", "Latest": f"{latest['runway_months']:.0f}mo", "Prior Month": f"{prev['runway_months']:.0f}mo", "MoM Change": f"{(latest['runway_months']-prev['runway_months']):+.1f}mo", "Benchmark": "18mo", "Status": "ON TRACK", "Trend Signal": "Extending — positive signal."},
-    {"Metric": "LTV:CAC", "Latest": f"{latest['ltv_cac_ratio']:.1f}x", "Prior Month": f"{prev['ltv_cac_ratio']:.1f}x", "MoM Change": f"{(latest['ltv_cac_ratio']-prev['ltv_cac_ratio']):+.1f}x", "Benchmark": "3x", "Status": "ON TRACK", "Trend Signal": "Crossed 3x target."},
-]
+d1, d2, d3, d4 = st.columns(4)
+with d1:
+    st.metric("Properties Live", fmt_num(row.get('properties_live'), 0))
+with d2:
+    st.metric("Properties - Ecommerce", fmt_num(row.get('properties_ecommerce'), 0))
+with d3:
+    st.metric("Properties - EMS", fmt_num(row.get('properties_ems'), 0))
+with d4:
+    st.metric("Properties - Services", fmt_num(row.get('properties_services'), 0))
 
-st.table(pd.DataFrame(rag_data))
+d5, d6, d7, d8 = st.columns(4)
+with d5:
+    st.metric("Time to Value (days)", fmt_num(row.get('time_to_value_days'), 0))
+with d6:
+    st.metric("TTV excl. Blocked", fmt_num(row.get('time_to_value_excl_blocked'), 0))
+with d7:
+    st.metric("Indicative EV", fmt_gbp(row.get('indicative_ev')))
+with d8:
+    st.metric("Implementation Backlog", fmt_num(row.get('implementation_backlog'), 0))
+
+
+# ============================================================
+# SECTION E: Capital Efficiency / Cash / NWC
+# ============================================================
+st.markdown('<div class="kpi-section-title">E. Capital Efficiency / Cash / NWC</div>', unsafe_allow_html=True)
+
+e1, e2, e3, e4 = st.columns(4)
+with e1:
+    st.metric("Cash Balance", fmt_gbp(row.get('cash_balance')),
+              delta_pct(row.get('cash_balance'), row.get('cash_balance_budget')))
+with e2:
+    st.metric("Cash Burn (Monthly)", fmt_gbp(row.get('cash_burn_monthly')))
+with e3:
+    st.metric("Cash Runway", fmt_months(row.get('cash_runway_months')))
+with e4:
+    st.metric("NWC", fmt_gbp(row.get('net_working_capital')),
+              delta_pct(row.get('net_working_capital'), row.get('nwc_budget')))
+
+e5, e6, e7, e8 = st.columns(4)
+with e5:
+    st.metric("Free Cash Conv (Month)", fmt_pct(row.get('free_cash_conversion_month')))
+with e6:
+    st.metric("Free Cash Conv (YTD)", fmt_pct(row.get('free_cash_conversion_ytd')))
+with e7:
+    st.metric("Free Cash Conv (Budget)", fmt_pct(row.get('free_cash_conversion_budget')))
+with e8:
+    st.metric("Cash vs Budget", fmt_gbp(row.get('cash_balance_budget')))
+
+
+# Cash bridge chart
+st.markdown("**Cash Bridge**")
+cash_labels = ['Opening Cash', 'EBITDA', 'Capex', 'NWC Change', 'Closing Cash']
+opening_cash = row.get('cash_balance_prior_month', 0) or 0
+ebitda = row.get('ebitda_actual', 0) or 0
+capex_val = row.get('capex', 0) or 0
+nwc_change = (row.get('net_working_capital', 0) or 0) - (row.get('nwc_prior_month', 0) or 0)
+closing_cash = row.get('cash_balance', 0) or 0
+
+# Scale to full £ for cash
+fig_cash = go.Figure(go.Waterfall(
+    name="Cash", orientation="v",
+    measure=['absolute', 'relative', 'relative', 'relative', 'total'],
+    x=cash_labels,
+    y=[opening_cash, ebitda * 1000, capex_val * 1000, nwc_change, closing_cash],
+    connector={"line": {"color": "#e2e8f0"}},
+    increasing={"marker": {"color": "#22c55e"}},
+    decreasing={"marker": {"color": "#ef4444"}},
+    totals={"marker": {"color": "#0f172a"}},
+    textposition="outside",
+    text=[fmt_gbp(v) for v in [opening_cash, ebitda * 1000, capex_val * 1000, nwc_change, closing_cash]]
+))
+fig_cash.update_layout(
+    height=350, margin=dict(l=40, r=20, t=20, b=40),
+    plot_bgcolor='white', font=dict(family='Inter'),
+    showlegend=False, yaxis_title='£'
+)
+st.plotly_chart(fig_cash, use_container_width=True)
+
+
+# ============================================================
+# PEOPLE SECTION
+# ============================================================
+st.markdown('<div class="kpi-section-title">People / Headcount</div>', unsafe_allow_html=True)
+
+p1, p2, p3, p4 = st.columns(4)
+with p1:
+    st.metric("Total Headcount", fmt_num(row.get('total_headcount'), 1),
+              delta_pct(row.get('total_headcount'), row.get('headcount_budget')))
+with p2:
+    st.metric("Gross Payroll", fmt_gbp_k(row.get('gross_payroll') / 1000 if pd.notna(row.get('gross_payroll')) else None),
+              delta_pct(row.get('gross_payroll'), row.get('gross_payroll_budget')))
+with p3:
+    st.metric("Revenue per Employee", fmt_gbp_k(row.get('revenue_per_employee') / 1000 if pd.notna(row.get('revenue_per_employee')) else None))
+with p4:
+    st.metric("Payroll % Revenue", fmt_pct(row.get('payroll_pct_revenue')))
+
+p5, p6, p7, p8 = st.columns(4)
+with p5:
+    st.metric("HC - Ecommerce", fmt_num(row.get('headcount_ecommerce'), 1))
+with p6:
+    st.metric("HC - EMS", fmt_num(row.get('headcount_ems'), 1))
+with p7:
+    st.metric("HC - Services", fmt_num(row.get('headcount_services'), 1))
+with p8:
+    st.metric("HC - Central", fmt_num(row.get('headcount_central'), 1))
+
+
+# ============================================================
+# YTD COMPARISON TABLE
+# ============================================================
+st.markdown('<div class="kpi-section-title">YTD Summary — Actual vs Budget vs Prior Year</div>', unsafe_allow_html=True)
+
+ytd_data = {
+    'Metric': [
+        'Revenue (£k)', 'Tech MRR (£)', 'Services MRR (£)',
+        'Tech Gross Margin %', 'EBITDA (£k)', 'EBITDA Margin %',
+        'Cash Balance (£)', 'Headcount'
+    ],
+    'YTD Actual': [
+        row.get('revenue_total_ytd_actual'),
+        row.get('tech_mrr_ytd_actual'),
+        row.get('services_mrr_ytd_actual'),
+        row.get('tech_gross_margin_ytd_pct'),
+        row.get('ebitda_ytd_actual'),
+        row.get('ebitda_margin_ytd_pct'),
+        row.get('cash_balance'),
+        row.get('total_headcount')
+    ],
+    'YTD Budget': [
+        row.get('revenue_total_ytd_budget'),
+        row.get('tech_mrr_ytd_budget'),
+        row.get('services_mrr_ytd_budget'),
+        None,
+        row.get('ebitda_ytd_budget'),
+        None,
+        row.get('cash_balance_budget'),
+        row.get('headcount_budget')
+    ],
+    'YTD Prior Year': [
+        row.get('revenue_total_ytd_prior_year'),
+        row.get('tech_mrr_ytd_prior_year'),
+        row.get('services_mrr_ytd_prior_year'),
+        None,
+        None,
+        None,
+        None,
+        None
+    ]
+}
+
+ytd_df = pd.DataFrame(ytd_data)
+
+# Format nicely
+def format_ytd_val(val):
+    if pd.isna(val) or val is None:
+        return "—"
+    return f"{val:,.1f}"
+
+for col in ['YTD Actual', 'YTD Budget', 'YTD Prior Year']:
+    ytd_df[col] = ytd_df[col].apply(format_ytd_val)
+
+st.dataframe(ytd_df, use_container_width=True, hide_index=True)
+
+
+# ============================================================
+# FOOTER
+# ============================================================
+st.markdown("---")
+st.caption(f"Averroes Capital | Portfolio Intelligence Platform | Phase 1 KPI Dashboard | Generated {datetime.now().strftime('%d %b %Y %H:%M')}")
