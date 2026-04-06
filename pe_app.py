@@ -316,8 +316,10 @@ st.markdown('<div class="kpi-section-title">A. ARR / MRR / Scale</div>', unsafe_
 # Metrics calculation for Section A
 tech_mrr_month = row.get('tech_mrr_actual', 0) or 0
 serv_mrr_month = row.get('services_mrr_actual', 0) or 0
-tech_revenue_ytd = row.get('tech_arr', 0) or 0  # Re-ingested as YTD in parser
-serv_revenue_ytd = row.get('services_arr', 0) or 0 # Re-ingested as YTD in parser
+
+# --- CORE FIX: Use the explicit YTD columns from the database ---
+tech_revenue_ytd = row.get('tech_mrr_ytd_actual', 0) or 0
+serv_revenue_ytd = row.get('services_mrr_ytd_actual', 0) or 0
 total_revenue_ytd = tech_revenue_ytd + serv_revenue_ytd
 
 tech_arr_annual = tech_mrr_month * 12
