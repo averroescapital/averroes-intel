@@ -367,8 +367,45 @@ with s3:
     st.metric("Tech Gross Margin", fmt_pct(row.get('tech_gross_margin_pct')))
 
 
-# Revenue Breakdown Chart
-st.markdown("**Revenue Breakdown (£k) — Actual vs Budget**")
+# # Strategic Revenue Waterfall Bridge
+st.markdown("---")
+st.markdown("**Revenue Waterfall Bridge (£k) — FY25 to FY26 Budget**")
+
+wf_labels = ['FY25 Start', 'FY25 One-off', 'FY26 One-off YTD', 'Recur. Growth', 'ARR YTG', 'Weighted Pipe', 'H2 Assumptions', 'Gap', 'FY26 Budget']
+wf_vals = [
+    row.get('wf_revenue_start', 10322), 
+    row.get('wf_one_off_prev', -935),
+    row.get('wf_one_off_ytd', 288),
+    row.get('wf_recurring_growth', 627),
+    row.get('wf_arr_ytg', 538),
+    row.get('wf_weighted_pipeline', 935),
+    row.get('wf_budget_assumptions', 960),
+    row.get('wf_revenue_gap', 1103),
+    row.get('wf_revenue_end', 13839)
+]
+wf_measures = ['absolute', 'relative', 'relative', 'relative', 'relative', 'relative', 'relative', 'relative', 'total']
+
+fig_wf = go.Figure(go.Waterfall(
+    orientation="v",
+    measure=wf_measures,
+    x=wf_labels,
+    y=wf_vals,
+    connector={"line": {"color": "#e2e8f0"}},
+    increasing={"marker": {"color": "#22c55e"}},
+    decreasing={"marker": {"color": "#ef4444"}},
+    totals={"marker": {"color": "#0f172a"}},
+    text=["£" + str(round(v)) + "k" for v in [10322, -935, 288, 627, 538, 935, 960, 1103, 13839]], # hardcoded formatted text for clarity
+    textposition="outside"
+))
+fig_wf.update_layout(
+    height=400, margin=dict(l=40, r=20, t=10, b=40),
+    plot_bgcolor='white', font=dict(family='Inter', size=11),
+    showlegend=False
+)
+st.plotly_chart(fig_wf, use_container_width=True)
+
+# Secondary Bar Chart
+st.markdown("**Revenue Category Breakdown (£k) — Actual vs Budget**")
 rev_cats = ['Ecommerce', 'EMS', 'Services']
 rev_actual = [row.get('revenue_ecommerce_actual', 0), row.get('revenue_ems_actual', 0), row.get('revenue_services_actual', 0)]
 rev_budget = [row.get('revenue_ecommerce_budget', 0), row.get('revenue_ems_budget', 0), row.get('revenue_services_budget', 0)]
