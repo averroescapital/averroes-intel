@@ -317,10 +317,10 @@ st.markdown('<div class="kpi-section-title">A. ARR / MRR / Scale</div>', unsafe_
 tech_mrr_month = row.get('tech_mrr_actual', 0) or 0
 serv_mrr_month = row.get('services_mrr_actual', 0) or 0
 
-# --- CORE FIX: Use the explicit YTD columns from the database ---
-tech_revenue_ytd = row.get('tech_mrr_ytd_actual', 0) or 0
-serv_revenue_ytd = row.get('services_mrr_ytd_actual', 0) or 0
-total_revenue_ytd = tech_revenue_ytd + serv_revenue_ytd
+# --- YTD: Use explicit cumulative MRR columns from the database ---
+tech_mrr_ytd = row.get('tech_mrr_ytd_actual', 0) or 0
+serv_mrr_ytd = row.get('services_mrr_ytd_actual', 0) or 0
+total_mrr_ytd = tech_mrr_ytd + serv_mrr_ytd
 
 tech_arr_annual = tech_mrr_month * 12
 serv_arr_annual = serv_mrr_month * 12
@@ -336,15 +336,15 @@ with m2:
 with m3:
     st.metric("Total Group MRR (Month)", fmt_gbp(tech_mrr_month + serv_mrr_month))
 
-# --- Row 2: YTD Performance ---
-st.markdown("### 2. YTD Revenue Performance")
+# --- Row 2: YTD Cumulative MRR ---
+st.markdown("### 2. Cumulative MRR (YTD)")
 y1, y2, y3 = st.columns(3)
 with y1:
-    st.metric("Tech Revenue (YTD Actual)", fmt_gbp(tech_revenue_ytd))
+    st.metric("Tech MRR (YTD Cumulative)", fmt_gbp(tech_mrr_ytd))
 with y2:
-    st.metric("Services Revenue (YTD Actual)", fmt_gbp(serv_revenue_ytd))
+    st.metric("Services MRR (YTD Cumulative)", fmt_gbp(serv_mrr_ytd))
 with y3:
-    st.metric("Total Group Revenue (YTD)", fmt_gbp(total_revenue_ytd))
+    st.metric("Total Group MRR (YTD Cumulative)", fmt_gbp(total_mrr_ytd))
 
 # --- Row 3: Strategic ARR (Annualized) ---
 st.markdown("### 3. Annualized ARR (Run Rate)")
