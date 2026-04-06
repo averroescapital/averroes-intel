@@ -313,27 +313,56 @@ with c5:
 # ============================================================
 st.markdown('<div class="kpi-section-title">A. ARR / MRR / Scale</div>', unsafe_allow_html=True)
 
-a1, a2, a3, a4 = st.columns(4)
-with a1:
-    st.metric("Tech MRR", fmt_gbp(row.get('tech_mrr_actual')),
-              delta_pct(row.get('tech_mrr_actual'), row.get('tech_mrr_budget')))
-with a2:
-    st.metric("Services MRR", fmt_gbp(row.get('services_mrr_actual')),
-              delta_pct(row.get('services_mrr_actual'), row.get('services_mrr_budget')))
-with a3:
-    st.metric("Total MRR", fmt_gbp(row.get('total_mrr_actual')))
-with a4:
-    st.metric("Tech ARR", fmt_gbp(row.get('tech_arr')))
+# Metrics calculation for Section A
+tech_mrr_month = row.get('tech_mrr_actual', 0) or 0
+serv_mrr_month = row.get('services_mrr_actual', 0) or 0
+tech_revenue_ytd = row.get('tech_arr', 0) or 0  # Re-ingested as YTD in parser
+serv_revenue_ytd = row.get('services_arr', 0) or 0 # Re-ingested as YTD in parser
+total_revenue_ytd = tech_revenue_ytd + serv_revenue_ytd
 
-a5, a6, a7, a8 = st.columns(4)
-with a5:
-    st.metric("Services ARR", fmt_gbp(row.get('services_arr')))
-with a6:
+tech_arr_annual = tech_mrr_month * 12
+serv_arr_annual = serv_mrr_month * 12
+total_arr_annual = tech_arr_annual + serv_arr_annual
+
+# --- Row 1: Monthly Momentum ---
+st.markdown("### 1. Monthly Recurring Revenue (Current)")
+m1, m2, m3 = st.columns(3)
+with m1:
+    st.metric("Tech MRR (Month)", fmt_gbp(tech_mrr_month), delta_pct(tech_mrr_month, row.get('tech_mrr_budget')))
+with m2:
+    st.metric("Services MRR (Month)", fmt_gbp(serv_mrr_month), delta_pct(serv_mrr_month, row.get('services_mrr_budget')))
+with m3:
+    st.metric("Total Group MRR (Month)", fmt_gbp(tech_mrr_month + serv_mrr_month))
+
+# --- Row 2: YTD Performance ---
+st.markdown("### 2. YTD Revenue Performance")
+y1, y2, y3 = st.columns(3)
+with y1:
+    st.metric("Tech Revenue (YTD Actual)", fmt_gbp(tech_revenue_ytd))
+with y2:
+    st.metric("Services Revenue (YTD Actual)", fmt_gbp(serv_revenue_ytd))
+with y3:
+    st.metric("Total Group Revenue (YTD)", fmt_gbp(total_revenue_ytd))
+
+# --- Row 3: Strategic ARR (Annualized) ---
+st.markdown("### 3. Annualized ARR (Run Rate)")
+a1, a2, a3 = st.columns(3)
+with a1:
+    st.metric("Tech ARR (Annualized)", fmt_gbp(tech_arr_annual))
+with a2:
+    st.metric("Services ARR (Annualized)", fmt_gbp(serv_arr_annual))
+with a3:
+    st.metric("Total Group ARR (Annualized)", fmt_gbp(total_arr_annual))
+
+# --- Row 4: Secondary Metrics ---
+st.markdown("---")
+s1, s2, s3 = st.columns(3)
+with s1:
     st.metric("CARR", fmt_gbp(row.get('carr')))
-with a7:
-    st.metric("Rev vs Budget", fmt_pct(row.get('revenue_vs_budget_pct')))
-with a8:
+with s2:
     st.metric("Rev YoY Growth", fmt_pct(row.get('revenue_yoy_growth_pct')))
+with s3:
+    st.metric("Tech Gross Margin", fmt_pct(row.get('tech_gross_margin_pct')))
 
 
 # Revenue Breakdown Chart
