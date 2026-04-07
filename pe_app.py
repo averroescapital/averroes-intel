@@ -243,7 +243,7 @@ selected_period = st.sidebar.selectbox(
     format_func=lambda x: pd.Timestamp(x).strftime('%B %Y')
 )
 
-row = pc_df[pc_df['period'] == selected_period].iloc[0]
+row = pc_df[pc_df['period'] == selected_period].iloc[-1]
 
 st.sidebar.markdown("---")
 status_label = "🟢 BigQuery Live" if data_status == "connected" else "🟡 CSV Fallback"
