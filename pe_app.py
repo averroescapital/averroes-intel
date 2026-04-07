@@ -500,14 +500,6 @@ row = pc_df[pc_df['period'] == selected_period].iloc[-1]
 
 st.sidebar.markdown("---")
 import streamlit.components.v1 as components
-components.html("""
-<button onclick="window.parent.print()"
-  style="width:100%;background:#0f172a;color:white;border:none;padding:10px 14px;
-         border-radius:4px;font-weight:600;font-size:0.85rem;cursor:pointer;
-         font-family:Inter,sans-serif;letter-spacing:0.03em;">
-  🖨️ Print Dashboard as PDF
-</button>
-""", height=44)
 status_label = "🟢 BigQuery Live" if data_status == "connected" else "🟡 CSV Fallback"
 st.sidebar.caption(f"Data: {status_label}")
 st.sidebar.caption(f"Period: {row.get('fy', '')} {row.get('fy_quarter', '')} (Month {int(row.get('fy_month_num', 0))})")
@@ -532,13 +524,25 @@ with st.spinner("Generating executive summary…"):
 
 pdf_bytes = generate_exec_pdf(display_name, period_str, commentary, kpi_table, alerts)
 
-# Header row: title left, download button top-right
-hdr_col, btn_col = st.columns([5, 1])
+# Header row: title left, print (full dashboard) top-right
+hdr_col, print_col = st.columns([6, 1])
 with hdr_col:
     st.markdown(f'<div class="main-header">{display_name} — Monthly Board Pack</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="sub-header">{row.get("fy", "")} {row.get("fy_quarter", "")} | {period_str} | Currency: GBP</div>', unsafe_allow_html=True)
-with btn_col:
-    st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+with print_col:
+    st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
+    components.html("""
+    <button onclick="window.parent.print()" title="Print / Save full dashboard as PDF"
+      style="width:100%;background:#0f172a;color:white;border:none;padding:8px;
+             border-radius:4px;font-size:1.1rem;cursor:pointer;">🖨️</button>
+    """, height=38)
+
+# Exec Summary title + download button side by side
+es_col, dl_col = st.columns([6, 1])
+with es_col:
+    st.markdown('<div class="kpi-section-title">📋 Executive Summary</div>', unsafe_allow_html=True)
+with dl_col:
+    st.markdown("<div style='height:22px'></div>", unsafe_allow_html=True)
     st.download_button(
         label="⬇",
         data=pdf_bytes,
@@ -547,8 +551,6 @@ with btn_col:
         use_container_width=True,
         help="Download Exec Summary as PDF"
     )
-
-st.markdown('<div class="kpi-section-title">📋 Executive Summary</div>', unsafe_allow_html=True)
 
 # Commentary
 st.markdown(
