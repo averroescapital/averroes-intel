@@ -89,25 +89,44 @@ st.markdown("""
 # ============================================================
 # HELPER FUNCTIONS
 # ============================================================
-def fmt_gbp_k(val, decimals=1):
-    """Format as £Xk (thousands)."""
+def fmt_gbp_k(val, decimals=2):
+    """Format value knowing the base unit is already in thousands."""
     if pd.isna(val): return "—"
-    return f"£{val:,.{decimals}f}k"
+    raw_val = val * 1000
+    abs_val = abs(raw_val)
+    if abs_val >= 1_000_000:
+        return f"£{raw_val / 1_000_000:,.{decimals}f} M"
+    elif abs_val >= 1_000:
+        return f"£{raw_val / 1_000:,.{decimals}f} k"
+    else:
+        return f"£{raw_val:,.{decimals}f}"
 
-def fmt_gbp(val, decimals=0):
-    """Format as full £ value."""
+def fmt_gbp(val, decimals=2):
+    """Format as full £ value dynamically scaled to M or k."""
     if pd.isna(val): return "—"
-    return f"£{val:,.{decimals}f}"
+    abs_val = abs(val)
+    if abs_val >= 1_000_000:
+        return f"£{val / 1_000_000:,.{decimals}f} M"
+    elif abs_val >= 1_000:
+        return f"£{val / 1_000:,.{decimals}f} k"
+    else:
+        return f"£{val:,.{decimals}f}"
 
 def fmt_pct(val, decimals=1):
     """Format as percentage."""
     if pd.isna(val): return "—"
     return f"{val:,.{decimals}f}%"
 
-def fmt_num(val, decimals=1):
-    """Format number."""
+def fmt_num(val, decimals=2):
+    """Format number dynamically scaled to M or k."""
     if pd.isna(val): return "—"
-    return f"{val:,.{decimals}f}"
+    abs_val = abs(val)
+    if abs_val >= 1_000_000:
+        return f"{val / 1_000_000:,.{decimals}f} M"
+    elif abs_val >= 1_000:
+        return f"{val / 1_000:,.{decimals}f} k"
+    else:
+        return f"{val:,.{decimals}f}"
 
 def fmt_months(val, decimals=1):
     if pd.isna(val): return "—"
