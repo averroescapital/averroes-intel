@@ -518,8 +518,6 @@ st.sidebar.caption(f"Period: {row.get('fy', '')} {row.get('fy_quarter', '')} (Mo
 display_name = selected_portco.replace("portco-", "").title()
 period_str = pd.Timestamp(selected_period).strftime('%B %Y')
 
-st.markdown(f'<div class="main-header">{display_name} — Monthly Board Pack</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="sub-header">{row.get("fy", "")} {row.get("fy_quarter", "")} | {period_str} | Currency: GBP</div>', unsafe_allow_html=True)
 # ============================================================
 # EXEC SUMMARY SECTION
 # ============================================================
@@ -531,18 +529,23 @@ with st.spinner("Generating executive summary…"):
 
 pdf_bytes = generate_exec_pdf(display_name, period_str, commentary, kpi_table, alerts)
 
-st.markdown('<div class="kpi-section-title">📋 Executive Summary</div>', unsafe_allow_html=True)
-
-# Download button (top right)
-dl_col, _ = st.columns([1, 4])
-with dl_col:
+# Header row: title left, download button top-right
+hdr_col, btn_col = st.columns([5, 1])
+with hdr_col:
+    st.markdown(f'<div class="main-header">{display_name} — Monthly Board Pack</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="sub-header">{row.get("fy", "")} {row.get("fy_quarter", "")} | {period_str} | Currency: GBP</div>', unsafe_allow_html=True)
+with btn_col:
+    st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
     st.download_button(
-        label="⬇ Download PDF",
+        label="⬇",
         data=pdf_bytes,
         file_name=f"exec_summary_{display_name}_{period_str.replace(' ', '_')}.pdf",
         mime="application/pdf",
-        use_container_width=True
+        use_container_width=True,
+        help="Download Exec Summary as PDF"
     )
+
+st.markdown('<div class="kpi-section-title">📋 Executive Summary</div>', unsafe_allow_html=True)
 
 # Commentary
 st.markdown(
