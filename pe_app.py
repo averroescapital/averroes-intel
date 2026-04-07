@@ -4,6 +4,15 @@ import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime
 import os
+import io
+
+# PDF generation
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.lib.enums import TA_LEFT, TA_CENTER
 
 # ============================================================
 # PAGE CONFIG
@@ -148,6 +157,206 @@ def rag_status(actual, budget, higher_is_better=True):
     elif ratio >= 0.85: return "amber"
     else: return "red"
 
+# ============================================================
+# EXEC SUMMARY — KPI TABLE BUILDER
+# ============================================================
+def build_kpi_table(row):
+    """Returns list of dicts: {kpi, actual, budget, var_pct, prior_year, unit}"""
+    def safe(col): return row.get(col)
+    def var(a, b):
+        if pd.isna(a) or pd.isna(b) or b == 0: return None
+        return ((a - b) / abs(b)) * 100
+
+    table = [
+        {"kpi": "Total ARR",            "actual": safe('total_arr'),               "budget": None,                              "prior_year": None,                             "unit": "gbp"},
+        {"kpi": "Monthly Revenue",       "actual": safe('revenue_total_actual'),    "budget": safe('revenue_total_budget'),      "prior_year": safe('revenue_total_prior_year'), "unit": "gbp_k"},
+        {"kpi": "Tech MRR (Month)",      "actual": safe('tech_mrr_actual'),         "budget": safe('tech_mrr_budget'),           "prior_year": safe('tech_mrr_prior_year'),      "unit": "gbp"},
+        {"kpi": "Services MRR (Month)",  "actual": safe('services_mrr_actual'),     "budget": safe('services_mrr_budget'),       "prior_year": safe('services_mrr_prior_year'),  "unit": "gbp"},
+        {"kpi": "EBITDA",                "actual": safe('ebitda_actual'),           "budget": safe('ebitda_budget'),             "prior_year": safe('ebitda_prior_year'),         "unit": "gbp_k"},
+        {"kpi": "EBITDA Margin %",       "actual": safe('ebitda_margin_pct'),       "budget": safe('ebitda_margin_budget_pct'),  "prior_year": safe('ebitda_margin_prior_pct'),   "unit": "pct"},
+        {"kpi": "Tech Gross Margin %",   "actual": safe('tech_gross_margin_pct'),   "budget": safe('tech_gross_margin_budget_pct'), "prior_year": safe('tech_gross_margin_prior_pct'), "unit": "pct"},
+        {"kpi": "Cash Balance",          "actual": safe('cash_balance'),            "budget": safe('cash_balance_budget'),       "prior_year": None,                             "unit": "gbp"},
+        {"kpi": "Cash Runway (months)",  "actual": safe('cash_runway_months'),      "budget": None,                              "prior_year": None,                             "unit": "num"},
+        {"kpi": "Rule of 40",            "actual": (safe('rule_of_40') or 0) * 100,"budget": None,                              "prior_year": None,                             "unit": "pct"},
+        {"kpi": "Revenue YoY Growth %",  "actual": safe('revenue_yoy_growth_pct'),  "budget": None,                              "prior_year": None,                             "unit": "pct"},
+        {"kpi": "ARPC",                  "actual": safe('arpc_actual'),             "budget": safe('arpc_budget'),               "prior_year": None,                             "unit": "gbp"},
+        {"kpi": "Revenue Churn %",       "actual": (safe('revenue_churn_pct') or 0)*100, "budget": None,                         "prior_year": None,                             "unit": "pct"},
+        {"kpi": "Headcount",             "actual": safe('total_headcount'),         "budget": safe('headcount_budget'),          "prior_year": None,                             "unit": "num"},
+    ]
+    for r in table:
+        r["var_pct"] = var(r["actual"], r["budget"])
+    return table
+
+def fmt_kpi_val(val, unit):
+    if val is None or (isinstance(val, float) and pd.isna(val)): return "—"
+    if unit == "gbp":     return fmt_gbp(val)
+    if unit == "gbp_k":   return fmt_gbp_k(val)
+    if unit == "pct":     return fmt_pct(val)
+    if unit == "num":     return fmt_num(val, 1)
+    return str(round(val, 1))
+
+# ============================================================
+# EXEC SUMMARY — GEMINI COMMENTARY
+# ============================================================
+def generate_commentary(portco, period_str, kpi_table, alerts):
+    """Call Gemini to generate PE-style exec commentary. Cached in session_state."""
+    cache_key = f"exec_commentary_{portco}_{period_str}"
+    if cache_key in st.session_state:
+        return st.session_state[cache_key]
+
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+        model = genai.GenerativeModel('gemini-2.5-flash')
+
+        kpi_lines = "\n".join([
+            f"  - {r['kpi']}: Actual={fmt_kpi_val(r['actual'], r['unit'])}"
+            + (f", Budget={fmt_kpi_val(r['budget'], r['unit'])}" if r['budget'] is not None else "")
+            + (f", Var={r['var_pct']:+.1f}%" if r['var_pct'] is not None else "")
+            + (f", PY={fmt_kpi_val(r['prior_year'], r['unit'])}" if r['prior_year'] is not None else "")
+            for r in kpi_table
+        ])
+
+        alert_lines = "\n".join([f"  - [{a['level']}] {a['metric']}: {a['message']}" for a in alerts]) if alerts else "  None"
+
+        prompt = f"""You are a data analyst at Averroes Capital, a Private Equity firm.
+Write a concise executive briefing for the Managing Director / GP.
+
+Portfolio Company: {portco}
+Reporting Period: {period_str}
+
+Key Performance Indicators:
+{kpi_lines}
+
+Active Alerts:
+{alert_lines}
+
+Instructions:
+- Write exactly 3 short paragraphs (4-6 sentences each)
+- Paragraph 1: Overall trading momentum and revenue performance
+- Paragraph 2: Profitability, margins, and cash position
+- Paragraph 3: Key risks, alerts, and one clear bottom-line recommendation
+- Tone: Direct, data-driven, PE-style. No fluff. Reference specific numbers.
+- Do not use bullet points. Prose only.
+- Do not use headers or bold.
+"""
+        resp = model.generate_content(prompt)
+        commentary = resp.text.strip()
+        st.session_state[cache_key] = commentary
+        return commentary
+
+    except Exception as e:
+        fallback = f"Executive commentary unavailable: {e}"
+        st.session_state[cache_key] = fallback
+        return fallback
+
+
+# ============================================================
+# EXEC SUMMARY — PDF GENERATOR
+# ============================================================
+def generate_exec_pdf(portco, period_str, commentary, kpi_table, alerts):
+    """Generate a PDF exec summary using reportlab. Returns bytes."""
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=20*mm, rightMargin=20*mm,
+                            topMargin=20*mm, bottomMargin=20*mm)
+
+    styles = getSampleStyleSheet()
+    navy = colors.HexColor('#0f172a')
+    blue = colors.HexColor('#0ea5e9')
+    light_grey = colors.HexColor('#f8fafc')
+    mid_grey = colors.HexColor('#64748b')
+    red = colors.HexColor('#dc2626')
+    amber = colors.HexColor('#d97706')
+    green = colors.HexColor('#16a34a')
+
+    title_style = ParagraphStyle('Title', fontName='Helvetica-Bold', fontSize=18, textColor=navy, spaceAfter=2*mm)
+    sub_style   = ParagraphStyle('Sub',   fontName='Helvetica',      fontSize=9,  textColor=mid_grey, spaceAfter=6*mm)
+    body_style  = ParagraphStyle('Body',  fontName='Helvetica',      fontSize=9,  textColor=navy, leading=14, spaceAfter=4*mm)
+    section_style = ParagraphStyle('Sec', fontName='Helvetica-Bold', fontSize=10, textColor=navy, spaceBefore=6*mm, spaceAfter=3*mm)
+    alert_style = ParagraphStyle('Alert', fontName='Helvetica',      fontSize=8,  textColor=navy, leading=12)
+
+    story = []
+
+    # Header
+    story.append(Paragraph("Averroes Capital", ParagraphStyle('Brand', fontName='Helvetica-Bold', fontSize=10, textColor=blue)))
+    story.append(Paragraph(f"{portco} — Executive Summary", title_style))
+    story.append(Paragraph(f"Reporting Period: {period_str} | Confidential | Generated {datetime.now().strftime('%d %b %Y')}", sub_style))
+    story.append(HRFlowable(width="100%", thickness=1, color=blue, spaceAfter=5*mm))
+
+    # Commentary
+    story.append(Paragraph("Executive Commentary", section_style))
+    for para in commentary.split('\n\n'):
+        if para.strip():
+            story.append(Paragraph(para.strip(), body_style))
+
+    story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#e2e8f0'), spaceAfter=4*mm))
+
+    # KPI Table
+    story.append(Paragraph("Key Performance Indicators", section_style))
+    table_data = [["KPI", "Actual", "Budget", "Var %", "Prior Year"]]
+    for r in kpi_table:
+        var_str = f"{r['var_pct']:+.1f}%" if r['var_pct'] is not None else "—"
+        table_data.append([
+            r['kpi'],
+            fmt_kpi_val(r['actual'], r['unit']),
+            fmt_kpi_val(r['budget'], r['unit']),
+            var_str,
+            fmt_kpi_val(r['prior_year'], r['unit']),
+        ])
+
+    col_widths = [55*mm, 30*mm, 30*mm, 22*mm, 30*mm]
+    t = Table(table_data, colWidths=col_widths, repeatRows=1)
+
+    table_style = TableStyle([
+        ('BACKGROUND',  (0,0), (-1,0),  navy),
+        ('TEXTCOLOR',   (0,0), (-1,0),  colors.white),
+        ('FONTNAME',    (0,0), (-1,0),  'Helvetica-Bold'),
+        ('FONTSIZE',    (0,0), (-1,0),  8),
+        ('ALIGN',       (1,0), (-1,-1), 'RIGHT'),
+        ('ALIGN',       (0,0), (0,-1),  'LEFT'),
+        ('FONTNAME',    (0,1), (-1,-1), 'Helvetica'),
+        ('FONTSIZE',    (0,1), (-1,-1), 8),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, light_grey]),
+        ('GRID',        (0,0), (-1,-1), 0.3, colors.HexColor('#e2e8f0')),
+        ('TOPPADDING',  (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING',(0,0),(-1,-1), 3),
+    ])
+    # Colour var% column: red if negative, green if positive
+    for i, r in enumerate(kpi_table, start=1):
+        if r['var_pct'] is not None:
+            col = green if r['var_pct'] >= 0 else red
+            table_style.add('TEXTCOLOR', (3, i), (3, i), col)
+            table_style.add('FONTNAME',  (3, i), (3, i), 'Helvetica-Bold')
+    t.setStyle(table_style)
+    story.append(t)
+
+    # Alerts
+    if alerts:
+        story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#e2e8f0'), spaceBefore=6*mm, spaceAfter=4*mm))
+        story.append(Paragraph("Critical Portfolio Alerts", section_style))
+        for a in alerts:
+            colour = red if "CRITICAL" in a['level'] else amber
+            story.append(Paragraph(
+                f"<font color='#{colour.hexval()[2:]}'>■</font> <b>{a['metric']}</b>: {a['message']} <i>Action: {a['action']}</i>",
+                alert_style
+            ))
+            story.append(Spacer(1, 2*mm))
+    else:
+        story.append(Spacer(1, 4*mm))
+        story.append(Paragraph("No critical alerts this period.", body_style))
+
+    # Footer
+    story.append(Spacer(1, 6*mm))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#e2e8f0')))
+    story.append(Paragraph("Averroes Capital | Portfolio Intelligence Platform | Confidential",
+                            ParagraphStyle('Footer', fontName='Helvetica', fontSize=7, textColor=mid_grey, alignment=TA_CENTER, spaceBefore=3*mm)))
+
+    doc.build(story)
+    buf.seek(0)
+    return buf.getvalue()
+
+
 def get_anomalies(row):
     """Detect critical PE red flags and return a list of actionable alerts."""
     alerts = []
@@ -278,9 +487,55 @@ period_str = pd.Timestamp(selected_period).strftime('%B %Y')
 st.markdown(f'<div class="main-header">{display_name} — Monthly Board Pack</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="sub-header">{row.get("fy", "")} {row.get("fy_quarter", "")} | {period_str} | Currency: GBP</div>', unsafe_allow_html=True)
 # ============================================================
+# EXEC SUMMARY SECTION
+# ============================================================
+kpi_table   = build_kpi_table(row)
+alerts      = get_anomalies(row)
+
+with st.spinner("Generating executive summary…"):
+    commentary = generate_commentary(display_name, period_str, kpi_table, alerts)
+
+pdf_bytes = generate_exec_pdf(display_name, period_str, commentary, kpi_table, alerts)
+
+st.markdown('<div class="kpi-section-title">📋 Executive Summary</div>', unsafe_allow_html=True)
+
+# Download button (top right)
+dl_col, _ = st.columns([1, 4])
+with dl_col:
+    st.download_button(
+        label="⬇ Download PDF",
+        data=pdf_bytes,
+        file_name=f"exec_summary_{display_name}_{period_str.replace(' ', '_')}.pdf",
+        mime="application/pdf",
+        use_container_width=True
+    )
+
+# Commentary
+st.markdown(
+    f'<div style="background:#f8fafc;border-left:4px solid #0ea5e9;padding:18px 22px;border-radius:4px;font-size:0.92rem;line-height:1.7;color:#0f172a;margin-bottom:16px;">{commentary.replace(chr(10), "<br><br>")}</div>',
+    unsafe_allow_html=True
+)
+
+# KPI snapshot table
+st.markdown("**Key KPI Snapshot**")
+kpi_df_data = []
+for r in kpi_table:
+    var_str = f"{r['var_pct']:+.1f}%" if r['var_pct'] is not None else "—"
+    kpi_df_data.append({
+        "KPI":        r["kpi"],
+        "Actual":     fmt_kpi_val(r["actual"],     r["unit"]),
+        "Budget":     fmt_kpi_val(r["budget"],     r["unit"]),
+        "Var %":      var_str,
+        "Prior Year": fmt_kpi_val(r["prior_year"], r["unit"]),
+    })
+kpi_snapshot_df = pd.DataFrame(kpi_df_data)
+st.dataframe(kpi_snapshot_df, use_container_width=True, hide_index=True)
+
+st.markdown("---")
+
+# ============================================================
 # ANOMALY & RISK ALERTS
 # ============================================================
-alerts = get_anomalies(row)
 if alerts:
     with st.expander("🚨 CRITICAL PORTFOLIO ALERTS DETECTED", expanded=True):
         for a in alerts:
