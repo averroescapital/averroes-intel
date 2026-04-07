@@ -435,20 +435,17 @@ def get_anomalies(row):
 @st.cache_data(ttl=600)
 def load_data():
     """Load from BigQuery, fall back to local CSV.
-
-    Always merges CSV values for:
-    - wf_* columns (strategic bridge/planning data — not in BigQuery)
-    - properties_live (corrected value maintained in CSV)
-    This ensures the dashboard reflects the latest CSV without hardcoding.
+    CSV is always loaded as a patch source:
+    - Columns missing from BQ (wf_* planning data) are injected from CSV
+    - CSV_PREFERRED columns always use CSV value (e.g. properties_live)
     """
-    # Columns that always prefer CSV over BigQuery
     CSV_PREFERRED = ['properties_live']
 
     csv_path = os.path.join(os.path.dirname(__file__), "gold_phase1_data.csv")
     df_csv = pd.DataFrame()
     try:
         df_csv = pd.read_csv(csv_path)
-        df_csv['period'] = pd.to_datetime(df_csv['period'])
+        df_csv['period'] = pd.to_datetime(df_csv['period']).dt.tz_localize(None).dt.normalize()
     except Exception as csv_e:
         print(f"CSV load warning: {csv_e}")
 
@@ -466,35 +463,27 @@ def load_data():
         df_bq = client.query(query).to_dataframe()
 
         if not df_bq.empty:
-            df_bq['period'] = pd.to_datetime(df_bq['period'])
+            # Normalise period to tz-naive date for safe joining
+            df_bq['period'] = pd.to_datetime(df_bq['period']).dt.tz_localize(None).dt.normalize()
 
             if not df_csv.empty:
-                # Columns in CSV not in BQ (e.g. wf_* planning data) — bring them all in
                 missing_cols = [c for c in df_csv.columns
                                 if c not in df_bq.columns and c not in ('portco_id', 'period')]
-                # Columns that prefer CSV value even if BQ has a value
-                override_cols = [c for c in CSV_PREFERRED
-                                 if c in df_csv.columns and c in df_bq.columns]
+                override_cols = [c for c in CSV_PREFERRED if c in df_csv.columns]
+                patch_cols = list(set(missing_cols + override_cols))
 
-                merge_cols = list(set(missing_cols + override_cols))
-                if merge_cols:
-                    df_patch = df_csv[['portco_id', 'period'] + merge_cols].copy()
-                    # Rename override cols to temp names to avoid suffix clash
-                    rename_map = {c: f'__csv_{c}' for c in override_cols}
-                    df_patch = df_patch.rename(columns=rename_map)
-
-                    df_bq = df_bq.merge(df_patch, on=['portco_id', 'period'], how='left')
-
-                    # Apply overrides
-                    for c in override_cols:
-                        df_bq[c] = df_bq[f'__csv_{c}'].combine_first(df_bq[c])
-                        df_bq.drop(columns=[f'__csv_{c}'], inplace=True)
+                if patch_cols:
+                    patch = df_csv[['portco_id', 'period'] + patch_cols].copy()
+                    patch.columns = ['portco_id', 'period'] + [f'__p_{c}' for c in patch_cols]
+                    df_bq = df_bq.merge(patch, on=['portco_id', 'period'], how='left')
+                    for c in patch_cols:
+                        df_bq[c] = df_bq[f'__p_{c}']
+                        df_bq.drop(columns=[f'__p_{c}'], inplace=True)
 
             return df_bq, "connected"
     except Exception as e:
         print(f"BigQuery Connection Issue: {e}")
 
-    # Fallback to CSV only
     if not df_csv.empty:
         return df_csv, "csv_fallback"
 
