@@ -14,6 +14,9 @@ st.set_page_config(
     page_icon="📊"
 )
 
+# --- APP REBOOT TOGGLE ---
+APP_VERSION = "2.0.1 - Live Cache Buster"
+
 PROJECT_ID = "averroes-portfolio-intel"
 
 # ============================================================
