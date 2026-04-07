@@ -434,7 +434,24 @@ def get_anomalies(row):
 # ============================================================
 @st.cache_data(ttl=600)
 def load_data():
-    """Load from BigQuery, fall back to local CSV."""
+    """Load from BigQuery, fall back to local CSV.
+
+    Always merges CSV values for:
+    - wf_* columns (strategic bridge/planning data — not in BigQuery)
+    - properties_live (corrected value maintained in CSV)
+    This ensures the dashboard reflects the latest CSV without hardcoding.
+    """
+    # Columns that always prefer CSV over BigQuery
+    CSV_PREFERRED = ['properties_live']
+
+    csv_path = os.path.join(os.path.dirname(__file__), "gold_phase1_data.csv")
+    df_csv = pd.DataFrame()
+    try:
+        df_csv = pd.read_csv(csv_path)
+        df_csv['period'] = pd.to_datetime(df_csv['period'])
+    except Exception as csv_e:
+        print(f"CSV load warning: {csv_e}")
+
     try:
         from google.cloud import bigquery
         if "gcp_service_account" in st.secrets:
@@ -450,19 +467,38 @@ def load_data():
 
         if not df_bq.empty:
             df_bq['period'] = pd.to_datetime(df_bq['period'])
+
+            if not df_csv.empty:
+                # Columns in CSV not in BQ (e.g. wf_* planning data) — bring them all in
+                missing_cols = [c for c in df_csv.columns
+                                if c not in df_bq.columns and c not in ('portco_id', 'period')]
+                # Columns that prefer CSV value even if BQ has a value
+                override_cols = [c for c in CSV_PREFERRED
+                                 if c in df_csv.columns and c in df_bq.columns]
+
+                merge_cols = list(set(missing_cols + override_cols))
+                if merge_cols:
+                    df_patch = df_csv[['portco_id', 'period'] + merge_cols].copy()
+                    # Rename override cols to temp names to avoid suffix clash
+                    rename_map = {c: f'__csv_{c}' for c in override_cols}
+                    df_patch = df_patch.rename(columns=rename_map)
+
+                    df_bq = df_bq.merge(df_patch, on=['portco_id', 'period'], how='left')
+
+                    # Apply overrides
+                    for c in override_cols:
+                        df_bq[c] = df_bq[f'__csv_{c}'].combine_first(df_bq[c])
+                        df_bq.drop(columns=[f'__csv_{c}'], inplace=True)
+
             return df_bq, "connected"
     except Exception as e:
         print(f"BigQuery Connection Issue: {e}")
 
-    # Fallback to local CSV
-    try:
-        csv_path = os.path.join(os.path.dirname(__file__), "gold_phase1_data.csv")
-        df = pd.read_csv(csv_path)
-        df['period'] = pd.to_datetime(df['period'])
-        return df, "csv_fallback"
-    except Exception as e2:
-        print(f"CSV fallback failed: {e2}")
-        return pd.DataFrame(), "error"
+    # Fallback to CSV only
+    if not df_csv.empty:
+        return df_csv, "csv_fallback"
+
+    return pd.DataFrame(), "error"
 
 
 df_raw, data_status = load_data()
@@ -713,7 +749,7 @@ fig_wf = go.Figure(go.Waterfall(
     increasing={"marker": {"color": "#22c55e"}},
     decreasing={"marker": {"color": "#ef4444"}},
     totals={"marker": {"color": "#0f172a"}},
-    text=[fmt_gbp_k(v / 1000) if v != 0 else "—" for v in wf_vals],
+    text=[fmt_gbp_k(v) if v != 0 else "—" for v in wf_vals],
     textposition="outside"
 ))
 fig_wf.update_layout(
