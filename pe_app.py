@@ -511,6 +511,9 @@ components.html("""
 status_label = "🟢 BigQuery Live" if data_status == "connected" else "🟡 CSV Fallback"
 st.sidebar.caption(f"Data: {status_label}")
 st.sidebar.caption(f"Period: {row.get('fy', '')} {row.get('fy_quarter', '')} (Month {int(row.get('fy_month_num', 0))})")
+if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
+    st.cache_data.clear()
+    st.rerun()
 
 # ============================================================
 # HEADER
