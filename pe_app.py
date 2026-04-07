@@ -499,10 +499,15 @@ selected_period = st.sidebar.selectbox(
 row = pc_df[pc_df['period'] == selected_period].iloc[-1]
 
 st.sidebar.markdown("---")
-st.sidebar.markdown(
-    '<a href="javascript:window.print()" style="display:block;background:#0f172a;color:white;text-align:center;padding:10px;border-radius:4px;font-weight:600;font-size:0.85rem;text-decoration:none;margin-bottom:8px;">🖨️ Print Dashboard as PDF</a>',
-    unsafe_allow_html=True
-)
+import streamlit.components.v1 as components
+components.html("""
+<button onclick="window.parent.print()"
+  style="width:100%;background:#0f172a;color:white;border:none;padding:10px 14px;
+         border-radius:4px;font-weight:600;font-size:0.85rem;cursor:pointer;
+         font-family:Inter,sans-serif;letter-spacing:0.03em;">
+  🖨️ Print Dashboard as PDF
+</button>
+""", height=44)
 status_label = "🟢 BigQuery Live" if data_status == "connected" else "🟡 CSV Fallback"
 st.sidebar.caption(f"Data: {status_label}")
 st.sidebar.caption(f"Period: {row.get('fy', '')} {row.get('fy_quarter', '')} (Month {int(row.get('fy_month_num', 0))})")
