@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 # --- APP REBOOT TOGGLE ---
-APP_VERSION = "2.0.2 - Live Cache Buster Free Cash % Fix"
+APP_VERSION = "2.0.3 - Live Cache Buster Free Cash Multip"
 
 PROJECT_ID = "averroes-portfolio-intel"
 
