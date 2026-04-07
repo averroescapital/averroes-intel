@@ -94,23 +94,23 @@ def fmt_gbp_k(val, decimals=2):
     if pd.isna(val): return "—"
     raw_val = val * 1000
     abs_val = abs(raw_val)
-    if abs_val >= 1_000_000:
+    if abs_val >= 100_000:
         return f"£{raw_val / 1_000_000:,.{decimals}f} M"
     elif abs_val >= 1_000:
-        return f"£{raw_val / 1_000:,.{decimals}f} k"
+        return f"£{raw_val / 1_000:,.0f} k"
     else:
-        return f"£{raw_val:,.{decimals}f}"
+        return f"£{raw_val:,.0f}"
 
 def fmt_gbp(val, decimals=2):
     """Format as full £ value dynamically scaled to M or k."""
     if pd.isna(val): return "—"
     abs_val = abs(val)
-    if abs_val >= 1_000_000:
+    if abs_val >= 100_000:
         return f"£{val / 1_000_000:,.{decimals}f} M"
     elif abs_val >= 1_000:
-        return f"£{val / 1_000:,.{decimals}f} k"
+        return f"£{val / 1_000:,.0f} k"
     else:
-        return f"£{val:,.{decimals}f}"
+        return f"£{val:,.0f}"
 
 def fmt_pct(val, decimals=1):
     """Format as percentage."""
@@ -121,12 +121,12 @@ def fmt_num(val, decimals=2):
     """Format number dynamically scaled to M or k."""
     if pd.isna(val): return "—"
     abs_val = abs(val)
-    if abs_val >= 1_000_000:
+    if abs_val >= 100_000:
         return f"{val / 1_000_000:,.{decimals}f} M"
     elif abs_val >= 1_000:
-        return f"{val / 1_000:,.{decimals}f} k"
+        return f"{val / 1_000:,.0f} k"
     else:
-        return f"{val:,.{decimals}f}"
+        return f"{val:,.0f}"
 
 def fmt_months(val, decimals=1):
     if pd.isna(val): return "—"
