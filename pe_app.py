@@ -96,7 +96,7 @@ def fmt_gbp_k(val, decimals=2):
     abs_val = abs(raw_val)
     if abs_val >= 100_000:
         return f"£{raw_val / 1_000_000:,.{decimals}f} M"
-    elif abs_val >= 1_000:
+    elif abs_val >= 10_000:
         return f"£{raw_val / 1_000:,.0f} k"
     else:
         return f"£{raw_val:,.0f}"
@@ -107,7 +107,7 @@ def fmt_gbp(val, decimals=2):
     abs_val = abs(val)
     if abs_val >= 100_000:
         return f"£{val / 1_000_000:,.{decimals}f} M"
-    elif abs_val >= 1_000:
+    elif abs_val >= 10_000:
         return f"£{val / 1_000:,.0f} k"
     else:
         return f"£{val:,.0f}"
@@ -123,7 +123,7 @@ def fmt_num(val, decimals=2):
     abs_val = abs(val)
     if abs_val >= 100_000:
         return f"{val / 1_000_000:,.{decimals}f} M"
-    elif abs_val >= 1_000:
+    elif abs_val >= 10_000:
         return f"{val / 1_000:,.0f} k"
     else:
         return f"{val:,.0f}"
@@ -395,15 +395,15 @@ st.markdown("**Revenue Waterfall Bridge (£k) — FY25 to FY26 Budget**")
 
 wf_labels = ['FY25 Start', 'FY25 One-off', 'FY26 One-off YTD', 'Recur. Growth', 'ARR YTG', 'Weighted Pipe', 'H2 Assumptions', 'Gap', 'FY26 Budget']
 wf_vals = [
-    row.get('wf_revenue_start', 10322), 
-    row.get('wf_one_off_prev', -935),
-    row.get('wf_one_off_ytd', 288),
-    row.get('wf_recurring_growth', 627),
-    row.get('wf_arr_ytg', 538),
-    row.get('wf_weighted_pipeline', 935),
-    row.get('wf_budget_assumptions', 960),
-    row.get('wf_revenue_gap', 1103),
-    row.get('wf_revenue_end', 13839)
+    row.get('wf_revenue_start') or 0,
+    row.get('wf_one_off_prev') or 0,
+    row.get('wf_one_off_ytd') or 0,
+    row.get('wf_recurring_growth') or 0,
+    row.get('wf_arr_ytg') or 0,
+    row.get('wf_weighted_pipeline') or 0,
+    row.get('wf_budget_assumptions') or 0,
+    row.get('wf_revenue_gap') or 0,
+    row.get('wf_revenue_end') or 0,
 ]
 wf_measures = ['absolute', 'relative', 'relative', 'relative', 'relative', 'relative', 'relative', 'relative', 'total']
 
@@ -416,7 +416,7 @@ fig_wf = go.Figure(go.Waterfall(
     increasing={"marker": {"color": "#22c55e"}},
     decreasing={"marker": {"color": "#ef4444"}},
     totals={"marker": {"color": "#0f172a"}},
-    text=["£" + str(round(v)) + "k" for v in [10322, -935, 288, 627, 538, 935, 960, 1103, 13839]], # hardcoded formatted text for clarity
+    text=[fmt_gbp_k(v / 1000) if v != 0 else "—" for v in wf_vals],
     textposition="outside"
 ))
 fig_wf.update_layout(
