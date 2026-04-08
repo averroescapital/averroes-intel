@@ -434,21 +434,7 @@ def get_anomalies(row):
 # ============================================================
 @st.cache_data(ttl=600)
 def load_data():
-    """Load from BigQuery, fall back to local CSV.
-    CSV is always loaded as a patch source:
-    - Columns missing from BQ (wf_* planning data) are injected from CSV
-    - CSV_PREFERRED columns always use CSV value (e.g. properties_live)
-    """
-    CSV_PREFERRED = ['properties_live']
-
-    csv_path = os.path.join(os.path.dirname(__file__), "gold_phase1_data.csv")
-    df_csv = pd.DataFrame()
-    try:
-        df_csv = pd.read_csv(csv_path)
-        df_csv['period'] = pd.to_datetime(df_csv['period']).dt.tz_localize(None).dt.normalize()
-    except Exception as csv_e:
-        print(f"CSV load warning: {csv_e}")
-
+    """Load from BigQuery (single source of truth). Falls back to local CSV only if BQ unavailable."""
     try:
         from google.cloud import bigquery
         if "gcp_service_account" in st.secrets:
@@ -463,29 +449,25 @@ def load_data():
         df_bq = client.query(query).to_dataframe()
 
         if not df_bq.empty:
-            # Normalise period to tz-naive date for safe joining
             df_bq['period'] = pd.to_datetime(df_bq['period']).dt.tz_localize(None).dt.normalize()
-
-            if not df_csv.empty:
-                missing_cols = [c for c in df_csv.columns
-                                if c not in df_bq.columns and c not in ('portco_id', 'period')]
-                override_cols = [c for c in CSV_PREFERRED if c in df_csv.columns]
-                patch_cols = list(set(missing_cols + override_cols))
-
-                if patch_cols:
-                    patch = df_csv[['portco_id', 'period'] + patch_cols].copy()
-                    patch.columns = ['portco_id', 'period'] + [f'__p_{c}' for c in patch_cols]
-                    df_bq = df_bq.merge(patch, on=['portco_id', 'period'], how='left')
-                    for c in patch_cols:
-                        df_bq[c] = df_bq[f'__p_{c}']
-                        df_bq.drop(columns=[f'__p_{c}'], inplace=True)
-
+            # Deduplicate: keep latest computed_at per portco+period
+            if 'computed_at' in df_bq.columns:
+                df_bq = df_bq.sort_values('computed_at').drop_duplicates(
+                    subset=['portco_id', 'period'], keep='last'
+                )
             return df_bq, "connected"
     except Exception as e:
         print(f"BigQuery Connection Issue: {e}")
 
-    if not df_csv.empty:
-        return df_csv, "csv_fallback"
+    # CSV fallback (emergency only)
+    csv_path = os.path.join(os.path.dirname(__file__), "gold_phase1_data.csv")
+    try:
+        df_csv = pd.read_csv(csv_path)
+        df_csv['period'] = pd.to_datetime(df_csv['period']).dt.tz_localize(None).dt.normalize()
+        if not df_csv.empty:
+            return df_csv, "csv_fallback"
+    except Exception as csv_e:
+        print(f"CSV load warning: {csv_e}")
 
     return pd.DataFrame(), "error"
 
