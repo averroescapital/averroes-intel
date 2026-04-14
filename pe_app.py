@@ -393,7 +393,9 @@ status_label = {
     "error":            "🔴 No Data",
 }.get(data_status, "⚪ Unknown")
 st.sidebar.caption(f"Data: {status_label}")
-st.sidebar.caption(f"Period: {row.get('fy', '')} {row.get('fy_quarter', '')} (Month {int(row.get('fy_month_num') or 0)})")
+_m = row.get('fy_month_num', 0)
+_m_int = 0 if _m is None or str(_m) in ['<NA>', 'nan', 'None'] else int(_m)
+st.sidebar.caption(f"Period: {row.get('fy', '')} {row.get('fy_quarter', '')} (Month {_m_int})")
 if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
     st.cache_data.clear()
     st.rerun()
