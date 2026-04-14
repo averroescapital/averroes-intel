@@ -18,14 +18,24 @@ def ingest_ma_to_bronze(file_content, file_name, portco_id):
     if any(id_match in portco_id.lower() for id_match in ["alpha", "hotel", "hospitality"]):
         print(f"Routing to Specialized Alpha Parser for: {portco_id}")
         alpha_rows = parse_alpha_ma(file_content, file_name)
+        normalized = []
         for row in alpha_rows:
-            row.update({
+            normalized.append({
                 "ingestion_id": ingestion_id,
                 "portco_id": portco_id,
                 "file_name": file_name,
-                "value_type": "actual"
+                "sheet_name": row.get("sheet", ""),
+                "reporting_period": row.get("period", ""),
+                "row_label": row.get("kpi", ""),
+                "column_label": "actual",
+                "value": row.get("value"),
+                "value_type": "actual",
+                "currency": None,
+                "unit": None,
+                "ingested_at": None,
+                "source_cell": None,
             })
-        return alpha_rows
+        return normalized
 
     # 2. STANDARD PARSER (Core PE Metrics)
     wb = openpyxl.load_workbook(io.BytesIO(file_content), data_only=True)
