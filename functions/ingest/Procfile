@@ -1,1 +1,1 @@
-web: gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 540 main:app
+web: functions-framework --target=process_file --signature-type=cloudevent --port=$PORT
