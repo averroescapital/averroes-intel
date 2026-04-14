@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from datetime import datetime
 import os
 import io
+import sys
 
 # ============================================================
 # PAGE CONFIG
@@ -226,34 +227,115 @@ def get_anomalies(row):
 # ============================================================
 # DATA LOADING
 # ============================================================
+
+BUCKET_NAME = f"{PROJECT_ID}-portfolio-data"
+INGEST_PATH = os.path.join(os.path.dirname(__file__), "..", "functions", "ingest")
+
+
+def _get_gcp_credentials():
+    """Return (credentials, project_id) using st.secrets SA or ADC."""
+    if "gcp_service_account" in st.secrets:
+        from google.oauth2 import service_account
+        info = st.secrets["gcp_service_account"]
+        creds = service_account.Credentials.from_service_account_info(info)
+        return creds, PROJECT_ID
+    return None, PROJECT_ID
+
+
+@st.cache_data(ttl=600)
+def load_from_gcs():
+    """
+    GCS fallback: list every portco-*/MAfile*.xlsx in the portfolio-data bucket,
+    download and parse each one with phase1_parser, return combined DataFrame.
+    Falls back gracefully if GCS is unreachable.
+    """
+    try:
+        from google.cloud import storage as gcs
+
+        creds, project = _get_gcp_credentials()
+        client = gcs.Client(project=project, credentials=creds) if creds else gcs.Client(project=project)
+        bucket = client.bucket(BUCKET_NAME)
+
+        # Add ingest path so we can import phase1_parser
+        ingest_abs = os.path.abspath(INGEST_PATH)
+        if ingest_abs not in sys.path:
+            sys.path.insert(0, ingest_abs)
+        from phase1_parser import parse_ma_file
+
+        rows = []
+        blobs = list(client.list_blobs(BUCKET_NAME))
+        ma_blobs = [b for b in blobs if "MAfile" in b.name and b.name.endswith(".xlsx")]
+
+        if not ma_blobs:
+            print("GCS: no MAfile*.xlsx objects found in bucket.")
+            return pd.DataFrame(), "gcs_no_files"
+
+        for blob in ma_blobs:
+            # Derive portco_id from path prefix  (e.g. portco-alpha/MAfileJan26.xlsx)
+            parts = blob.name.split("/")
+            portco_id = parts[0] if len(parts) >= 2 else "portco-alpha"
+            print(f"GCS: parsing {blob.name} for {portco_id}")
+            try:
+                file_bytes = blob.download_as_bytes()
+                parsed = parse_ma_file(file_bytes, portco_id)
+                rows.append(parsed)
+            except Exception as parse_err:
+                print(f"GCS: failed to parse {blob.name}: {parse_err}")
+
+        if not rows:
+            return pd.DataFrame(), "gcs_parse_failed"
+
+        df_gcs = pd.DataFrame(rows)
+        df_gcs['period'] = pd.to_datetime(df_gcs['period']).dt.tz_localize(None).dt.normalize()
+        # Keep latest parse per portco+period
+        if 'computed_at' in df_gcs.columns:
+            df_gcs = df_gcs.sort_values('computed_at').drop_duplicates(
+                subset=['portco_id', 'period'], keep='last'
+            )
+        else:
+            df_gcs = df_gcs.drop_duplicates(subset=['portco_id', 'period'], keep='last')
+
+        print(f"GCS: loaded {len(df_gcs)} rows from {len(ma_blobs)} MA files.")
+        return df_gcs, "gcs_fallback"
+
+    except Exception as e:
+        print(f"GCS fallback failed: {e}")
+        return pd.DataFrame(), "gcs_error"
+
+
 @st.cache_data(ttl=600)
 def load_data():
-    """Load from BigQuery (single source of truth). Falls back to local CSV only if BQ unavailable."""
+    """
+    Data loading priority:
+      1. BigQuery gold.kpi_monthly  (live, single source of truth)
+      2. GCS bucket MA files        (parses all MAfile*.xlsx on the fly)
+      3. Local gold_phase1_data.csv (emergency static fallback)
+    """
+    # --- 1. BigQuery ---
     try:
         from google.cloud import bigquery
-        if "gcp_service_account" in st.secrets:
-            from google.oauth2 import service_account
-            info = st.secrets["gcp_service_account"]
-            credentials = service_account.Credentials.from_service_account_info(info)
-            client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
-        else:
-            client = bigquery.Client(project=PROJECT_ID)
+        creds, project = _get_gcp_credentials()
+        client = bigquery.Client(project=project, credentials=creds) if creds else bigquery.Client(project=project)
 
         query = f"SELECT * FROM `{PROJECT_ID}.gold.kpi_monthly` ORDER BY period ASC"
         df_bq = client.query(query).to_dataframe()
 
         if not df_bq.empty:
             df_bq['period'] = pd.to_datetime(df_bq['period']).dt.tz_localize(None).dt.normalize()
-            # Deduplicate: keep latest computed_at per portco+period
             if 'computed_at' in df_bq.columns:
                 df_bq = df_bq.sort_values('computed_at').drop_duplicates(
                     subset=['portco_id', 'period'], keep='last'
                 )
             return df_bq, "connected"
     except Exception as e:
-        print(f"BigQuery Connection Issue: {e}")
+        print(f"BigQuery unavailable: {e}")
 
-    # CSV fallback (emergency only)
+    # --- 2. GCS bucket (parse MA files directly) ---
+    df_gcs, gcs_status = load_from_gcs()
+    if not df_gcs.empty:
+        return df_gcs, gcs_status
+
+    # --- 3. Local CSV (emergency only) ---
     csv_path = os.path.join(os.path.dirname(__file__), "gold_phase1_data.csv")
     try:
         df_csv = pd.read_csv(csv_path)
@@ -301,9 +383,17 @@ row = pc_df[pc_df['period'] == selected_period].iloc[-1]
 
 st.sidebar.markdown("---")
 import streamlit.components.v1 as components
-status_label = "🟢 BigQuery Live" if data_status == "connected" else "🟡 CSV Fallback"
+status_label = {
+    "connected":        "🟢 BigQuery Live",
+    "gcs_fallback":     "🟡 GCS Fallback",
+    "gcs_no_files":     "🔴 GCS – No MA Files",
+    "gcs_parse_failed": "🔴 GCS – Parse Error",
+    "gcs_error":        "🔴 GCS Unavailable",
+    "csv_fallback":     "🟠 CSV Fallback (static)",
+    "error":            "🔴 No Data",
+}.get(data_status, "⚪ Unknown")
 st.sidebar.caption(f"Data: {status_label}")
-st.sidebar.caption(f"Period: {row.get('fy', '')} {row.get('fy_quarter', '')} (Month {int(row.get('fy_month_num', 0))})")
+st.sidebar.caption(f"Period: {row.get('fy', '')} {row.get('fy_quarter', '')} (Month {int(row.get('fy_month_num') or 0)})")
 if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
     st.cache_data.clear()
     st.rerun()
