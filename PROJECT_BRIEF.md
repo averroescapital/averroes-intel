@@ -44,8 +44,11 @@ Currency: GBP. All monetary figures stored in £k unless suffixed otherwise.
 
 ## 4. Infrastructure
 
+- **GitHub:** `github.com/averroescapital/averroes-portfolio-intel` (private repo)
+- **GitHub org:** `averroescapital`
 - **GCP project:** `averroes-portfolio-intel`
 - **Region:** `europe-west2`
+- **gcloud auth:** Run `gcloud auth login` + `gcloud config set project averroes-portfolio-intel` before any deploy/backfill commands
 - **GCS bucket:** `averroes-portfolio-intel-portfolio-data`
 - **Ingest path:** `gs://{bucket}/portco-alpha/ma-files/*.xlsx`
 - **Cloud Function:** `portfolio-data-ingest` (gen2, python311, 512MB, 300s timeout)
