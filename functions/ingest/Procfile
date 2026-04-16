@@ -1,0 +1,1 @@
+web: functions-framework --target=process_file --signature-type=cloudevent --port=$PORT
