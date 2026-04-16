@@ -233,6 +233,15 @@ def harmonize_v2_columns(df):
     def _safe(col, default=0):
         return df[col] if col in df.columns else default
 
+    def _maybe_pct(series):
+        """Convert decimal margin to % if values are in [-1,1] range. Preserve NaN."""
+        if not isinstance(series, pd.Series):
+            return series
+        non_null = series.dropna()
+        if len(non_null) > 0 and non_null.between(-1, 1).all():
+            return series * 100
+        return series
+
     # ARR — total = Tech ARR + Services ARR
     df["total_arr"] = _safe("tech_arr") + _safe("services_arr")
     df["carr"] = _safe("tech_arr") + _safe("services_arr")
@@ -253,22 +262,29 @@ def harmonize_v2_columns(df):
 
     # Profitability — use Financial KPIs margin % if available, else compute
     df["ebitda_budget"] = _safe("ebitda_budget")
-    if "ebitda_margin_pct" not in df.columns or df["ebitda_margin_pct"].isna().all():
-        rev = df["revenue_total_actual"].replace(0, np.nan) if "revenue_total_actual" in df.columns else 1
-        df["ebitda_margin_pct"] = (_safe("ebitda_actual") / rev * 100).fillna(0)
-    else:
+    rev = df["revenue_total_actual"].replace(0, np.nan) if "revenue_total_actual" in df.columns else 1
+    ebitda_m = _safe("ebitda_margin_pct")
+    _has_ebitda_m = isinstance(ebitda_m, pd.Series) and ebitda_m.notna().any()
+    if _has_ebitda_m:
         # Financial KPIs stores as decimal (e.g. -0.1227 = -12.27%), convert to %
-        df["ebitda_margin_pct"] = (_safe("ebitda_margin_pct") * 100).fillna(0)
-    if "ebitda_margin_budget_pct" not in df.columns or df["ebitda_margin_budget_pct"].isna().all():
+        df["ebitda_margin_pct"] = _maybe_pct(ebitda_m)
+    else:
         rev = df["revenue_total_actual"].replace(0, np.nan) if "revenue_total_actual" in df.columns else 1
-        df["ebitda_margin_budget_pct"] = (_safe("ebitda_budget") / rev * 100).fillna(0)
+        df["ebitda_margin_pct"] = (_safe("ebitda_actual") / rev * 100)
+    ebitda_mb = _safe("ebitda_margin_budget_pct")
+    _has_ebitda_mb = isinstance(ebitda_mb, pd.Series) and ebitda_mb.notna().any()
+    if _has_ebitda_mb:
+        df["ebitda_margin_budget_pct"] = _maybe_pct(ebitda_mb)
     else:
-        df["ebitda_margin_budget_pct"] = (_safe("ebitda_margin_budget_pct") * 100).fillna(0)
-    if "ebitda_margin_prior_pct" not in df.columns or df["ebitda_margin_prior_pct"].isna().all():
+        rev = df["revenue_total_actual"].replace(0, np.nan) if "revenue_total_actual" in df.columns else 1
+        df["ebitda_margin_budget_pct"] = (_safe("ebitda_budget") / rev * 100)
+    ebitda_mp = _safe("ebitda_margin_prior_pct")
+    _has_ebitda_mp = isinstance(ebitda_mp, pd.Series) and ebitda_mp.notna().any()
+    if _has_ebitda_mp:
+        df["ebitda_margin_prior_pct"] = _maybe_pct(ebitda_mp)
+    else:
         rev_py = df["revenue_total_prior_year"].replace(0, np.nan) if "revenue_total_prior_year" in df.columns else 1
-        df["ebitda_margin_prior_pct"] = (_safe("ebitda_prior_year") / rev_py * 100).fillna(0)
-    else:
-        df["ebitda_margin_prior_pct"] = (_safe("ebitda_margin_prior_pct") * 100).fillna(0)
+        df["ebitda_margin_prior_pct"] = (_safe("ebitda_prior_year") / rev_py * 100)
 
     # Contribution
     df["contribution_margin_pct"] = 0
@@ -283,38 +299,42 @@ def harmonize_v2_columns(df):
 
     # Tech gross margin — use Financial KPIs values, convert decimal to %
     tgm = _safe("tech_gross_margin_pct")
-    if isinstance(tgm, pd.Series) and tgm.dropna().between(-1, 1).all():
-        df["tech_gross_margin_pct"] = (tgm * 100).fillna(0)
-    else:
-        df["tech_gross_margin_pct"] = tgm
+    df["tech_gross_margin_pct"] = _maybe_pct(tgm)
     tgm_b = _safe("tech_gross_margin_budget_pct")
-    if isinstance(tgm_b, pd.Series) and tgm_b.dropna().between(-1, 1).all():
-        df["tech_gross_margin_budget_pct"] = (tgm_b * 100).fillna(0)
-    else:
-        df["tech_gross_margin_budget_pct"] = tgm_b if isinstance(tgm_b, pd.Series) else 0
+    df["tech_gross_margin_budget_pct"] = _maybe_pct(tgm_b) if isinstance(tgm_b, pd.Series) else tgm_b
     tgm_p = _safe("tech_gross_margin_prior_pct")
-    if isinstance(tgm_p, pd.Series) and tgm_p.dropna().between(-1, 1).all():
-        df["tech_gross_margin_prior_pct"] = (tgm_p * 100).fillna(0)
-    else:
-        df["tech_gross_margin_prior_pct"] = tgm_p if isinstance(tgm_p, pd.Series) else 0
-    # YTD tech gross margin
+    df["tech_gross_margin_prior_pct"] = _maybe_pct(tgm_p) if isinstance(tgm_p, pd.Series) else tgm_p
     tgm_ytd = _safe("tech_gross_margin_ytd_pct")
-    if isinstance(tgm_ytd, pd.Series) and tgm_ytd.dropna().between(-1, 1).all():
-        df["tech_gross_margin_ytd_pct"] = (tgm_ytd * 100).fillna(0)
-    else:
-        df["tech_gross_margin_ytd_pct"] = tgm_ytd if isinstance(tgm_ytd, pd.Series) else 0
+    df["tech_gross_margin_ytd_pct"] = _maybe_pct(tgm_ytd) if isinstance(tgm_ytd, pd.Series) else tgm_ytd
 
     # Cash
     df["cash_balance"] = _safe("cash_balance")
     df["cash_balance_budget"] = _safe("cash_balance_budget")
     df["cash_balance_prior_month"] = _safe("cash_balance_prior_month")
-    # Cash runway = cash balance / monthly cash burn (NOT ebitda)
+
+    # Cash burn: use parsed value if available, else derive from MoM cash balance delta
     burn = _safe("cash_burn_monthly")
+    if isinstance(burn, pd.Series) and burn.isna().all() and "cash_balance" in df.columns:
+        # Derive: negative delta = cash loss (burn). Sort by period within each portco.
+        df_sorted = df.sort_values(["portco_id", "period"])
+        computed_burn = -df_sorted.groupby("portco_id")["cash_balance"].diff()
+        # Re-align to original index
+        burn = computed_burn.reindex(df.index)
+        df["cash_burn_monthly"] = burn
+    elif isinstance(burn, pd.Series) and burn.isna().any() and "cash_balance" in df.columns:
+        # Fill gaps: some periods have parsed burn, others don't
+        df_sorted = df.sort_values(["portco_id", "period"])
+        computed_burn = -df_sorted.groupby("portco_id")["cash_balance"].diff()
+        burn = burn.fillna(computed_burn.reindex(df.index))
+        df["cash_burn_monthly"] = burn
+
+    # Cash runway = cash balance / monthly cash burn rate
     if isinstance(burn, pd.Series):
         burn_abs = burn.abs().replace(0, np.nan)
     else:
         burn_abs = 1
-    df["cash_runway_months"] = (_safe("cash_balance") / burn_abs).fillna(0) if "cash_balance" in df.columns else 0
+    # NaN runway = not enough data to compute (avoids false CRITICAL alerts)
+    df["cash_runway_months"] = (_safe("cash_balance") / burn_abs) if "cash_balance" in df.columns else np.nan
 
     # Capex
     df["capex"] = 0
@@ -343,10 +363,9 @@ def harmonize_v2_columns(df):
 
     # EBITDA margin YTD — use Financial KPIs value, convert decimal to %
     em_ytd = _safe("ebitda_margin_ytd_pct")
-    if isinstance(em_ytd, pd.Series) and em_ytd.dropna().between(-1, 1).all():
-        df["ebitda_margin_ytd_pct"] = (em_ytd * 100).fillna(0)
-    else:
-        df["ebitda_margin_ytd_pct"] = em_ytd if isinstance(em_ytd, pd.Series) else 0
+    df["ebitda_margin_ytd_pct"] = _maybe_pct(em_ytd) if isinstance(em_ytd, pd.Series) else em_ytd
+    em_ytd_b = _safe("ebitda_margin_ytd_budget_pct")
+    df["ebitda_margin_ytd_budget_pct"] = _maybe_pct(em_ytd_b) if isinstance(em_ytd_b, pd.Series) else em_ytd_b
 
     # Waterfall (era3 only) — use gold values if available, else 0
     for wf_col in ['wf_revenue_start', 'wf_one_off_prev', 'wf_one_off_ytd', 'wf_recurring_growth',
