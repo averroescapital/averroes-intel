@@ -309,6 +309,7 @@ def pivot_to_gold(silver: pd.DataFrame, portco_id: str = "portco-alpha") -> pd.D
             "ytd_revenue_growth_pct":    pick("YTD_REVENUE_GROWTH", "actual"),
             "ytd_revenue_growth_budget": pick("YTD_REVENUE_GROWTH", "budget"),
             "time_to_value_days":        pick("TIME_TO_VALUE", "actual"),
+            "time_to_value_excl_blocked": pick("TIME_TO_VALUE_EXCL_BLOCKED", "actual"),
 
             "rule_of_40":            pick("RULE_OF_40", "actual"),
             "revenue_churn_pct":     pick("REVENUE_CHURN", "actual"),

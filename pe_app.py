@@ -367,11 +367,14 @@ def harmonize_v2_columns(df):
     df["free_cash_conversion_ytd"] = _safe("free_cash_conversion_ytd")
     df["free_cash_conversion_budget"] = _safe("free_cash_conversion_budget")
 
-    # Indicative EV
+    # Indicative EV (stored in gold as £k, display as £M)
     df["indicative_ev"] = _safe("indicative_ev")
 
     # S&M efficiency
     df["sm_efficiency"] = _safe("sm_efficiency")
+
+    # TTV excl. blocked
+    df["time_to_value_excl_blocked"] = _safe("time_to_value_excl_blocked")
 
     # YTD revenue growth
     df["ytd_revenue_growth_pct"] = _safe("ytd_revenue_growth_pct")
@@ -437,6 +440,41 @@ def harmonize_v2_columns(df):
     # YTD PY
     df["revenue_total_ytd_py"] = _safe("revenue_total_ytd_py")
     df["ebitda_ytd_py"] = _safe("ebitda_ytd_py")
+
+    # ------------------------------------------------------------------
+    # Derived SaaS unit economics: CAC, CAC Payback, LTV, LTV:CAC
+    # ------------------------------------------------------------------
+    # S&M Cost (monthly) ≈ Total Overheads × proportion.
+    # Since we have S&M Efficiency = S&M Cost (YTD) / TCV (YTD), and
+    # we don't have isolated monthly S&M, we approximate:
+    #   Monthly S&M Cost ≈ Revenue × (1 - Contribution Margin)
+    # But more directly, we can derive LTV from ARPC and churn:
+    #   LTV = (ARPC_monthly × Gross_Margin) / Monthly_Churn
+    #   CAC Payback = CAC / (ARPC_monthly × Gross_Margin)
+    # Without new customer count, CAC is estimated from S&M efficiency:
+    #   S&M Efficiency = S&M Cost / New ARR ≈ S&M Cost / (New Modules × ARPC × 12)
+    # We approximate CAC = Overheads allocated to S&M / net new properties
+
+    arpc_m = df["arpc_actual"]                      # monthly ARPC in £
+    gm = df["tech_gross_margin_pct"] / 100          # decimal gross margin
+    churn_annual = df["revenue_churn_pct"]           # annual churn as decimal (0.027 = 2.7%)
+    churn_monthly = churn_annual / 12               # monthly churn
+
+    # LTV = (Monthly ARPC × Gross Margin) / Monthly Churn
+    df["ltv"] = (arpc_m * gm) / churn_monthly.replace(0, np.nan)
+
+    # CAC approximation: total overheads (monthly, abs) as S&M proxy
+    # This is a rough proxy; refine when isolated S&M data is available
+    sm_cost_monthly = df["total_overheads"].abs()    # £k
+    new_properties = df["properties_live"].diff()    # net new properties/month
+    df["cac"] = (sm_cost_monthly * 1000) / new_properties.replace(0, np.nan)  # £ per customer
+
+    # CAC Payback (months) = CAC / (ARPC × Gross Margin)
+    monthly_value = arpc_m * gm
+    df["cac_payback_months"] = df["cac"] / monthly_value.replace(0, np.nan)
+
+    # LTV:CAC ratio
+    df["ltv_cac_ratio"] = df["ltv"] / df["cac"].replace(0, np.nan)
 
     # Covenants
     df["gl_revenue_actual_cumulative"] = _safe("gr_revenue_actual_ytd")
@@ -850,7 +888,8 @@ with b1:
     st.metric("ARPC (Actual)", fmt_gbp(row.get('arpc_actual')),
               delta_pct(row.get('arpc_actual'), row.get('arpc_budget')))
 with b2:
-    st.metric("S&M Efficiency", fmt_pct(row.get('sm_efficiency', 0) * 100 if pd.notna(row.get('sm_efficiency')) else None))
+    sm_eff = row.get('sm_efficiency')
+    st.metric("S&M Efficiency", f"{sm_eff:.2f}x" if pd.notna(sm_eff) else "—")
 with b3:
     st.metric("Tech Gross Margin", fmt_pct(row.get('tech_gross_margin_pct')))
 with b4:
@@ -967,7 +1006,7 @@ with d5:
 with d6:
     st.metric("TTV excl. Blocked", fmt_num(row.get('time_to_value_excl_blocked'), 0))
 with d7:
-    st.metric("Indicative EV", fmt_gbp(row.get('indicative_ev')))
+    st.metric("Indicative EV", fmt_gbp_k(row.get('indicative_ev')))
 with d8:
     st.metric("Implementation Backlog", fmt_num(row.get('implementation_backlog'), 0))
 
@@ -997,30 +1036,35 @@ with e6:
 with e7:
     st.metric("Free Cash Conv (Budget)", fmt_pct(row.get('free_cash_conversion_budget')))
 with e8:
-    st.metric("Cash vs Budget", fmt_gbp(row.get('cash_balance_budget')))
+    _cash_act = row.get('cash_balance')
+    _cash_bgt = row.get('cash_balance_budget')
+    _cash_var = (_cash_act or 0) - (_cash_bgt or 0) if pd.notna(_cash_act) and pd.notna(_cash_bgt) else None
+    st.metric("Cash vs Budget", fmt_gbp(_cash_var) if pd.notna(_cash_var) else "—")
 
 
-# Cash bridge chart
+# Cash bridge chart — reconciles via: Opening + Net Cash Flow = Closing
 st.markdown("**Cash Bridge**")
-cash_labels = ['Opening Cash', 'EBITDA', 'Capex', 'NWC Change', 'Closing Cash']
 opening_cash = row.get('cash_balance_prior_month', 0) or 0
-ebitda = row.get('ebitda_actual', 0) or 0
-capex_val = row.get('capex', 0) or 0
-nwc_change = (row.get('net_working_capital', 0) or 0) - (row.get('nwc_prior_month', 0) or 0)
 closing_cash = row.get('cash_balance', 0) or 0
+ebitda_cf = row.get('ebitda_actual', 0) or 0       # EBITDA in £k
+capex_cf = row.get('capex', 0) or 0                # Capex in £k (negative)
+# Derive "Other" as the residual so the bridge always reconciles
+net_cash_flow = (closing_cash - opening_cash)       # in £ (cash_balance is £)
+other_items = net_cash_flow - (ebitda_cf * 1000) - (capex_cf * 1000)  # residual (WC, financing, etc.)
 
-# Scale to full £ for cash
+cash_labels = ['Opening Cash', 'EBITDA', 'Capex', 'WC & Financing', 'Closing Cash']
+cash_values = [opening_cash, ebitda_cf * 1000, capex_cf * 1000, other_items, closing_cash]
 fig_cash = go.Figure(go.Waterfall(
     name="Cash", orientation="v",
     measure=['absolute', 'relative', 'relative', 'relative', 'total'],
     x=cash_labels,
-    y=[opening_cash, ebitda * 1000, capex_val * 1000, nwc_change, closing_cash],
+    y=cash_values,
     connector={"line": {"color": "#e2e8f0"}},
     increasing={"marker": {"color": "#22c55e"}},
     decreasing={"marker": {"color": "#ef4444"}},
     totals={"marker": {"color": "#0f172a"}},
     textposition="outside",
-    text=[fmt_gbp(v) for v in [opening_cash, ebitda * 1000, capex_val * 1000, nwc_change, closing_cash]]
+    text=[fmt_gbp(v) for v in cash_values]
 ))
 fig_cash.update_layout(
     height=350, margin=dict(l=40, r=20, t=20, b=40),
@@ -1081,21 +1125,21 @@ ytd_data = {
     ],
     'YTD Budget': [
         row.get('revenue_total_ytd_budget'),
-        row.get('tech_mrr_budget'),           # use budget MRR (no separate YTD budget)
-        row.get('services_mrr_ytd_budget'),
-        row.get('tech_gross_margin_ytd_budget_pct'),
+        None,                                 # no YTD budget for Tech MRR
+        None,                                 # no YTD budget for Services MRR
+        None,                                 # no YTD budget for TGM %
         row.get('ebitda_ytd_budget'),
-        row.get('ebitda_margin_ytd_budget_pct'),
+        None,                                 # no YTD budget for EBITDA margin
         row.get('cash_balance_budget'),
         row.get('headcount_budget')
     ],
     'YTD Prior Year': [
-        row.get('revenue_total_ytd_py'),      # real YTD PY from P&L Summary
-        row.get('tech_mrr_prior_year'),
-        row.get('services_mrr_prior_year'),
-        row.get('tech_gross_margin_prior_pct'),
-        row.get('ebitda_ytd_py'),             # real YTD PY EBITDA
-        row.get('ebitda_margin_prior_pct'),
+        row.get('revenue_total_ytd_py'),
+        None,                                 # no YTD PY for Tech MRR
+        None,                                 # no YTD PY for Services MRR
+        None,                                 # no YTD PY for TGM %
+        row.get('ebitda_ytd_py'),
+        None,                                 # no YTD PY for EBITDA margin
         row.get('cash_balance_prior_month'),
         row.get('headcount_prior_year')
     ]

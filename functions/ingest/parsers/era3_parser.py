@@ -92,6 +92,24 @@ def parse_financial_kpis(wb, rows):
                                     ws.cell(header_row + 2, value_col).coordinate))
                 continue
 
+            if kpi == 'SM_EFFICIENCY':
+                # Non-standard: header+2 row has label "YTD" and value is the actual
+                v = safe_number(ws.cell(header_row + 2, value_col).value)
+                if v is not None:
+                    rows.append(row(period, kpi, v, 'actual', None, sn,
+                                    ws.cell(header_row + 2, value_col).coordinate))
+                continue
+
+            if kpi == 'TIME_TO_VALUE':
+                # Non-standard: target(+2), actual(+3), excl.blocked(+4)
+                _block(ws, header_row, c, value_col, kpi, rows, period, sn)
+                # Also extract "Excluding blocked" at header+4
+                v = safe_number(ws.cell(header_row + 4, value_col).value)
+                if v is not None:
+                    rows.append(row(period, 'TIME_TO_VALUE_EXCL_BLOCKED', v, 'actual',
+                                    None, sn, ws.cell(header_row + 4, value_col).coordinate))
+                continue
+
             # Standard PY/Budget/Actual block
             _block(ws, header_row, c, value_col, kpi, rows, period, sn)
 

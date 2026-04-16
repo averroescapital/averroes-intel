@@ -194,6 +194,7 @@ CREATE TABLE `averroes-portfolio-intel.gold.kpi_monthly_v2` (
   ytd_revenue_growth_pct         FLOAT64,
   ytd_revenue_growth_budget      FLOAT64,
   time_to_value_days             FLOAT64,
+  time_to_value_excl_blocked     FLOAT64,
 
   rule_of_40                     FLOAT64,
   revenue_churn_pct              FLOAT64,
