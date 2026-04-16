@@ -57,12 +57,13 @@ DATABASES AVAILABLE:
 1. GOLD LAYER: `{PROJECT_ID}.gold.kpi_monthly_v2`
    - Use for: Executive performance, ARR trends, Margins, Rule of 40, Cash, Headcount totals.
    - Key Columns:
-     - Revenue: tech_arr, ecommerce_arr, ems_arr, revenue_total_actual, revenue_total_budget, revenue_yoy_growth_pct
+     - Revenue: tech_arr, ecommerce_arr, ems_arr, services_arr, revenue_total_actual, revenue_total_budget, revenue_yoy_growth_pct
      - BL Revenue: revenue_ecommerce_actual, revenue_ems_actual, revenue_services_actual
-     - MRR: tech_mrr_actual, tech_mrr_budget, ecommerce_mrr_actual, ems_mrr_actual
-     - Profit: ebitda_actual, ebitda_budget, tech_gross_margin_pct, total_overheads, contribution_total
-     - Cash: cash_balance, cash_burn_monthly, net_working_capital, net_debt
-     - Efficiency: rule_of_40, arpc_actual, revenue_churn_pct
+     - MRR: tech_mrr_actual, tech_mrr_budget, services_mrr_actual, services_mrr_budget, ecommerce_mrr_actual, ems_mrr_actual
+     - Profit: ebitda_actual, ebitda_budget, ebitda_ytd_actual, ebitda_margin_pct, tech_gross_margin_pct, total_overheads, contribution_total
+     - Cash: cash_balance, cash_balance_budget, cash_burn_monthly, net_working_capital, net_debt
+     - Efficiency: rule_of_40, arpc_actual, arpc_budget, revenue_churn_pct, free_cash_conversion_month, sm_efficiency, indicative_ev
+     - Waterfall: wf_revenue_start, wf_one_off_prev, wf_one_off_ytd, wf_recurring_growth, wf_arr_ytg, wf_weighted_pipeline, wf_budget_assumptions, wf_revenue_gap, wf_revenue_end
      - Covenants: gl_arr_actual, gl_arr_covenant, gl_arr_ratio, gr_revenue_ratio, gr_ebitda_capex_ratio
      - People: total_headcount
      - Time: period (DATE), fy (STRING e.g. 'FY26'), fy_quarter, fy_month_num

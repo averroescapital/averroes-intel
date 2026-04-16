@@ -39,6 +39,29 @@ def _block(ws, label_row, label_col, value_col, kpi, rows, period, sheet_name):
         rows.append(row(period, kpi, v, 'actual', None, sheet_name, ws.cell(label_row + 3, value_col).coordinate))
 
 
+_FIN_KPI_BLOCKS = {
+    'TECH MRR - CURRENT MONTH':                'TECH_MRR',
+    'TECH MRR - YTD':                          'LTM_TECH_MRR',
+    'SERVICES MRR - CURRENT MONTH':            'SERVICES_MRR',
+    'SERVICES MRR - YTD':                      'LTM_SERVICES_MRR',
+    'AVE REVENUE PER CUSTOMER - CURRENT MONTH':'ARPC',
+    'AVE REVENUE PER CUSTOMER - YTD':          'ARPC_YTD',
+    'YTD REVENUE GROWTH':                      'YTD_REVENUE_GROWTH',
+    'S&M EFFICIENCY':                          'SM_EFFICIENCY',
+    'TECH GROSS MARGIN (MONTH)':               'TECH_GROSS_MARGIN',
+    'TECH GROSS MARGIN (YTD)':                 'TECH_GROSS_MARGIN_YTD',
+    'EBITDA MARGIN (MONTH)':                   'EBITDA_MARGIN',
+    'EBITDA MARGIN (YTD)':                     'EBITDA_MARGIN_YTD',
+    'NET WORKING CAPITAL':                     'NET_WORKING_CAPITAL',
+    'CASH':                                    'CASH_FIN_KPI',
+    'FREE CASH CONVERSION (MONTH)':            'FREE_CASH_CONVERSION',
+    'FREE CASH CONVERSION (YTD)':              'FREE_CASH_CONVERSION_YTD',
+    'INDICATIVE EV':                           'INDICATIVE_EV',
+    'REVENUE CHURN':                           'REVENUE_CHURN',
+    'TIME TO VALUE (DAYS)':                    'TIME_TO_VALUE',
+}
+
+
 def parse_financial_kpis(wb, rows):
     sn = find_sheet(wb, 'Financial KPIs')
     if not sn:
@@ -48,40 +71,45 @@ def parse_financial_kpis(wb, rows):
     if period is None:
         return None
 
-    # Scan row 3 for known block labels
-    # Each block occupies 4 rows (label + PY + Budget + Actual) and spans 2-4 columns
-    for c in range(2, min(15, ws.max_column) + 1):
-        label = str(ws.cell(3, c).value or '').strip().upper()
-        if not label:
-            continue
-        value_col = c + 1  # convention: value column is to the right of label column
-
-        if label == 'TECH MRR - CURRENT MONTH':
-            _block(ws, 3, c, value_col, 'TECH_MRR', rows, period, sn)
-        elif label == 'TECH MRR - YTD':
-            _block(ws, 3, c, value_col, 'LTM_TECH_MRR', rows, period, sn)
-        elif label == 'SERVICES MRR - CURRENT MONTH':
-            _block(ws, 3, c, value_col, 'SERVICES_MRR', rows, period, sn)
-
-    # Scan later-row KPIs
-    for r in range(20, min(80, ws.max_row) + 1):
-        for c in range(2, min(15, ws.max_column) + 1):
-            label = str(ws.cell(r, c).value or '').strip().upper()
+    # Scan section header rows (3, 19, 35, 51, 67) for block labels.
+    # Each block: header row, then +1=Prior Year, +2=Budget, +3=Actual.
+    # Value column is always one to the right of the label column.
+    for header_row in (3, 19, 35, 51, 67):
+        for c in range(2, min(ws.max_column, 20) + 1):
+            label = str(ws.cell(header_row, c).value or '').strip().upper()
             if not label:
                 continue
+            kpi = _FIN_KPI_BLOCKS.get(label)
+            if kpi is None:
+                continue
             value_col = c + 1
-            if label == 'ARPC':
-                _block(ws, r, c, value_col, 'ARPC', rows, period, sn)
-            elif label == 'TECH GROSS MARGIN':
-                _block(ws, r, c, value_col, 'TECH_GROSS_MARGIN', rows, period, sn)
-            elif label == 'RULE OF 40':
-                _block(ws, r, c, value_col, 'RULE_OF_40', rows, period, sn)
-            elif label == 'REVENUE CHURN':
-                _block(ws, r, c, value_col, 'REVENUE_CHURN', rows, period, sn)
+
+            if kpi == 'INDICATIVE_EV':
+                # Indicative EV is a single value, not a PY/Budget/Actual block.
+                v = safe_number(ws.cell(header_row + 2, value_col).value)
+                if v is not None:
+                    rows.append(row(period, kpi, v, 'actual', None, sn,
+                                    ws.cell(header_row + 2, value_col).coordinate))
+                continue
+
+            # Standard PY/Budget/Actual block
+            _block(ws, header_row, c, value_col, kpi, rows, period, sn)
+
+    # Rule of 40 has a non-standard layout (components, not PY/Budget/Actual).
+    # Scan rows 67-75 for the specific component labels.
+    for r in range(67, min(76, ws.max_row + 1)):
+        for c in range(2, min(ws.max_column, 15) + 1):
+            label = str(ws.cell(r, c).value or '').strip().upper()
+            if label == 'RULE OF 40':
+                v = safe_number(ws.cell(r, c + 1).value)
+                if v is not None:
+                    rows.append(row(period, 'RULE_OF_40', v, 'actual', None, sn,
+                                    ws.cell(r, c + 1).coordinate))
             elif label == 'ARR GROWTH':
-                _block(ws, r, c, value_col, 'ARR_GROWTH', rows, period, sn)
-            elif label == 'NET WORKING CAPITAL':
-                _block(ws, r, c, value_col, 'NET_WORKING_CAPITAL', rows, period, sn)
+                v = safe_number(ws.cell(r, c + 1).value)
+                if v is not None:
+                    rows.append(row(period, 'ARR_GROWTH', v, 'actual', None, sn,
+                                    ws.cell(r, c + 1).coordinate))
 
     return period
 
@@ -92,16 +120,21 @@ def parse_financial_kpis(wb, rows):
 # R10/R40/R58 etc. — various components.
 # Col 2 = value for each named row.
 # ---------------------------------------------------------------------------
-WATERFALL_MAP = {
-    'revenue (start)':                 'WF_REVENUE_START',
-    'fy26 one-off previous year':      'WF_ONE_OFF_PREV',
-    'fy26 one-off revenue ytd':        'WF_ONE_OFF_YTD',
-    'fy26 ytd recurring growth':       'WF_RECURRING_GROWTH',
-    'fy26 arr ytg':                    'WF_ARR_TO_GO',
-    'fy26 weighted pipeline':          'WF_WEIGHTED_PIPELINE',
-    'fy26 budget assumptions':         'WF_BUDGET_ASSUMPTIONS',
-    'revenue (end)':                   'WF_REVENUE_END',
-}
+import re as _re
+
+# Waterfall labels use FY-specific prefixes (e.g. "FY25 Revenue", "FY26 One-off YTD").
+# We match by keyword patterns so labels work across any FY.
+_WATERFALL_PATTERNS = [
+    (_re.compile(r'^fy\d{2}\s+revenue$'),                'WF_REVENUE_START'),
+    (_re.compile(r'one.?off$'),                           'WF_ONE_OFF_PREV'),
+    (_re.compile(r'one.?off\s+(revenue\s+)?ytd'),         'WF_ONE_OFF_YTD'),
+    (_re.compile(r'ytd\s+recurring\s+growth'),            'WF_RECURRING_GROWTH'),
+    (_re.compile(r'arr\s+ytg'),                           'WF_ARR_TO_GO'),
+    (_re.compile(r'weighted\s+pipeline'),                 'WF_WEIGHTED_PIPELINE'),
+    (_re.compile(r'budget\s+assumption'),                 'WF_BUDGET_ASSUMPTIONS'),
+    (_re.compile(r'revenue\s+gap'),                       'WF_REVENUE_GAP'),
+    (_re.compile(r'^fy\d{2}\s+budget$'),                  'WF_REVENUE_END'),
+]
 
 
 def parse_revenue_waterfall(wb, period, rows):
@@ -109,12 +142,16 @@ def parse_revenue_waterfall(wb, period, rows):
     if not sn or period is None:
         return
     ws = wb[sn]
-    for r in range(1, min(80, ws.max_row) + 1):
+    for r in range(1, min(20, ws.max_row) + 1):
         label = str(ws.cell(r, 1).value or '').strip().lower()
-        if label in WATERFALL_MAP:
-            v = safe_number(ws.cell(r, 2).value)
-            if v is not None:
-                rows.append(row(period, WATERFALL_MAP[label], v, 'actual', None, sn, ws.cell(r, 2).coordinate))
+        if not label:
+            continue
+        for pattern, kpi in _WATERFALL_PATTERNS:
+            if pattern.search(label):
+                v = safe_number(ws.cell(r, 2).value)
+                if v is not None:
+                    rows.append(row(period, kpi, v, 'actual', None, sn, ws.cell(r, 2).coordinate))
+                break
 
 
 # ---------------------------------------------------------------------------

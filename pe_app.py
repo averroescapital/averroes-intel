@@ -233,26 +233,42 @@ def harmonize_v2_columns(df):
     def _safe(col, default=0):
         return df[col] if col in df.columns else default
 
-    # ARR
-    df["total_arr"] = _safe("tech_arr")
-    df["carr"] = _safe("tech_arr")
+    # ARR — total = Tech ARR + Services ARR
+    df["total_arr"] = _safe("tech_arr") + _safe("services_arr")
+    df["carr"] = _safe("tech_arr") + _safe("services_arr")
 
-    # Services MRR (not in v2 — use zero)
-    df["services_mrr_actual"] = _safe("services_mrr_actual", 0)
-    df["services_mrr_budget"] = 0
-    df["services_mrr_ytd_actual"] = 0
-    df["services_mrr_ytd_budget"] = 0
+    # Services MRR (now extracted from Financial KPIs sheet)
+    df["services_mrr_actual"] = _safe("services_mrr_actual")
+    df["services_mrr_budget"] = _safe("services_mrr_budget")
+    df["services_mrr_prior_year"] = _safe("services_mrr_prior_year")
+    df["services_mrr_ytd_actual"] = _safe("services_mrr_ytd_actual")
+    df["services_mrr_ytd_budget"] = 0  # not yet available in source
+
+    # Services ARR
+    df["services_arr"] = _safe("services_arr")
 
     # Revenue aliases
     df["revenue_total_budget"] = _safe("revenue_total_budget")
     df["revenue_yoy_growth_pct"] = _safe("revenue_yoy_growth_pct")
 
-    # Profitability
-    rev = df["revenue_total_actual"].replace(0, np.nan) if "revenue_total_actual" in df.columns else 1
+    # Profitability — use Financial KPIs margin % if available, else compute
     df["ebitda_budget"] = _safe("ebitda_budget")
-    df["ebitda_margin_pct"] = (_safe("ebitda_actual") / rev * 100).fillna(0) if "ebitda_actual" in df.columns else 0
-    df["ebitda_margin_budget_pct"] = (_safe("ebitda_budget") / rev * 100).fillna(0) if "ebitda_budget" in df.columns else 0
-    df["ebitda_margin_prior_pct"] = (_safe("ebitda_prior_year") / rev * 100).fillna(0) if "ebitda_prior_year" in df.columns else 0
+    if "ebitda_margin_pct" not in df.columns or df["ebitda_margin_pct"].isna().all():
+        rev = df["revenue_total_actual"].replace(0, np.nan) if "revenue_total_actual" in df.columns else 1
+        df["ebitda_margin_pct"] = (_safe("ebitda_actual") / rev * 100).fillna(0)
+    else:
+        # Financial KPIs stores as decimal (e.g. -0.1227 = -12.27%), convert to %
+        df["ebitda_margin_pct"] = (_safe("ebitda_margin_pct") * 100).fillna(0)
+    if "ebitda_margin_budget_pct" not in df.columns or df["ebitda_margin_budget_pct"].isna().all():
+        rev = df["revenue_total_actual"].replace(0, np.nan) if "revenue_total_actual" in df.columns else 1
+        df["ebitda_margin_budget_pct"] = (_safe("ebitda_budget") / rev * 100).fillna(0)
+    else:
+        df["ebitda_margin_budget_pct"] = (_safe("ebitda_margin_budget_pct") * 100).fillna(0)
+    if "ebitda_margin_prior_pct" not in df.columns or df["ebitda_margin_prior_pct"].isna().all():
+        rev_py = df["revenue_total_prior_year"].replace(0, np.nan) if "revenue_total_prior_year" in df.columns else 1
+        df["ebitda_margin_prior_pct"] = (_safe("ebitda_prior_year") / rev_py * 100).fillna(0)
+    else:
+        df["ebitda_margin_prior_pct"] = (_safe("ebitda_margin_prior_pct") * 100).fillna(0)
 
     # Contribution
     df["contribution_margin_pct"] = 0
@@ -265,31 +281,80 @@ def harmonize_v2_columns(df):
     dc_services = _safe("direct_costs_services")
     df["direct_costs_total"] = dc_ecom + dc_ems + dc_services
 
-    # Tech gross margin
-    df["tech_gross_margin_pct"] = _safe("tech_gross_margin_pct")
-    df["tech_gross_margin_budget_pct"] = 0
-    df["tech_gross_margin_prior_pct"] = 0
+    # Tech gross margin — use Financial KPIs values, convert decimal to %
+    tgm = _safe("tech_gross_margin_pct")
+    if isinstance(tgm, pd.Series) and tgm.dropna().between(-1, 1).all():
+        df["tech_gross_margin_pct"] = (tgm * 100).fillna(0)
+    else:
+        df["tech_gross_margin_pct"] = tgm
+    tgm_b = _safe("tech_gross_margin_budget_pct")
+    if isinstance(tgm_b, pd.Series) and tgm_b.dropna().between(-1, 1).all():
+        df["tech_gross_margin_budget_pct"] = (tgm_b * 100).fillna(0)
+    else:
+        df["tech_gross_margin_budget_pct"] = tgm_b if isinstance(tgm_b, pd.Series) else 0
+    tgm_p = _safe("tech_gross_margin_prior_pct")
+    if isinstance(tgm_p, pd.Series) and tgm_p.dropna().between(-1, 1).all():
+        df["tech_gross_margin_prior_pct"] = (tgm_p * 100).fillna(0)
+    else:
+        df["tech_gross_margin_prior_pct"] = tgm_p if isinstance(tgm_p, pd.Series) else 0
+    # YTD tech gross margin
+    tgm_ytd = _safe("tech_gross_margin_ytd_pct")
+    if isinstance(tgm_ytd, pd.Series) and tgm_ytd.dropna().between(-1, 1).all():
+        df["tech_gross_margin_ytd_pct"] = (tgm_ytd * 100).fillna(0)
+    else:
+        df["tech_gross_margin_ytd_pct"] = tgm_ytd if isinstance(tgm_ytd, pd.Series) else 0
 
     # Cash
     df["cash_balance"] = _safe("cash_balance")
-    ebitda_abs = df["ebitda_actual"].abs().replace(0, np.nan) if "ebitda_actual" in df.columns else 1
-    df["cash_runway_months"] = (_safe("cash_balance") / ebitda_abs).fillna(0) if "cash_balance" in df.columns else 0
+    df["cash_balance_budget"] = _safe("cash_balance_budget")
+    df["cash_balance_prior_month"] = _safe("cash_balance_prior_month")
+    # Cash runway = cash balance / monthly cash burn (NOT ebitda)
+    burn = _safe("cash_burn_monthly")
+    if isinstance(burn, pd.Series):
+        burn_abs = burn.abs().replace(0, np.nan)
+    else:
+        burn_abs = 1
+    df["cash_runway_months"] = (_safe("cash_balance") / burn_abs).fillna(0) if "cash_balance" in df.columns else 0
 
     # Capex
     df["capex"] = 0
 
     # ARPC
     df["arpc_actual"] = _safe("arpc_actual")
-    df["arpc_budget"] = 0
+    df["arpc_budget"] = _safe("arpc_budget")
 
-    # S&M / other efficiency
-    df["sm_efficiency"] = 0
+    # Free cash conversion
+    df["free_cash_conversion_month"] = _safe("free_cash_conversion_month")
+    df["free_cash_conversion_ytd"] = _safe("free_cash_conversion_ytd")
+    df["free_cash_conversion_budget"] = _safe("free_cash_conversion_budget")
 
-    # Waterfall (era3 only)
+    # Indicative EV
+    df["indicative_ev"] = _safe("indicative_ev")
+
+    # S&M efficiency
+    df["sm_efficiency"] = _safe("sm_efficiency")
+
+    # YTD revenue growth
+    df["ytd_revenue_growth_pct"] = _safe("ytd_revenue_growth_pct")
+
+    # EBITDA YTD (cumulative within FY, computed in gold pivot)
+    df["ebitda_ytd_actual"] = _safe("ebitda_ytd_actual")
+    df["ebitda_ytd_budget"] = _safe("ebitda_ytd_budget")
+
+    # EBITDA margin YTD — use Financial KPIs value, convert decimal to %
+    em_ytd = _safe("ebitda_margin_ytd_pct")
+    if isinstance(em_ytd, pd.Series) and em_ytd.dropna().between(-1, 1).all():
+        df["ebitda_margin_ytd_pct"] = (em_ytd * 100).fillna(0)
+    else:
+        df["ebitda_margin_ytd_pct"] = em_ytd if isinstance(em_ytd, pd.Series) else 0
+
+    # Waterfall (era3 only) — use gold values if available, else 0
     for wf_col in ['wf_revenue_start', 'wf_one_off_prev', 'wf_one_off_ytd', 'wf_recurring_growth',
                     'wf_arr_ytg', 'wf_weighted_pipeline', 'wf_budget_assumptions', 'wf_revenue_gap', 'wf_revenue_end']:
         if wf_col not in df.columns:
             df[wf_col] = 0
+        else:
+            df[wf_col] = df[wf_col].fillna(0)
 
     # Modules
     df["modules_live_total"] = _safe("modules_live_total")
@@ -411,6 +476,13 @@ def load_data():
                 df_bq = df_bq.sort_values('computed_at').drop_duplicates(
                     subset=['portco_id', 'period'], keep='last'
                 )
+            # Filter phantom months: rows from Customer Numbers cross-tab that
+            # have module data but no financial data (revenue/ebitda/cash all null)
+            financial_cols = ['revenue_total_actual', 'ebitda_actual', 'cash_balance', 'tech_mrr_actual']
+            existing_fin = [c for c in financial_cols if c in df_bq.columns]
+            if existing_fin:
+                has_financial = df_bq[existing_fin].notna().any(axis=1)
+                df_bq = df_bq[has_financial].reset_index(drop=True)
             return df_bq, "connected"
     except Exception as e:
         print(f"BigQuery unavailable: {e}")
@@ -909,22 +981,22 @@ ytd_data = {
     ],
     'YTD Budget': [
         row.get('revenue_total_ytd_budget'),
-        row.get('tech_mrr_ytd_budget'),
+        row.get('tech_mrr_ytd_actual'),  # no ytd budget variant yet
         row.get('services_mrr_ytd_budget'),
-        None,
+        row.get('tech_gross_margin_ytd_budget_pct'),
         row.get('ebitda_ytd_budget'),
-        None,
+        row.get('ebitda_margin_ytd_budget_pct'),
         row.get('cash_balance_budget'),
-        row.get('headcount_budget')
+        None
     ],
     'YTD Prior Year': [
-        row.get('revenue_total_ytd_prior_year'),
-        row.get('tech_mrr_ytd_prior_year'),
-        row.get('services_mrr_ytd_prior_year'),
-        None,
-        None,
-        None,
-        None,
+        row.get('revenue_total_prior_year'),  # monthly PY as proxy
+        row.get('tech_mrr_prior_year'),
+        row.get('services_mrr_prior_year'),
+        row.get('tech_gross_margin_prior_pct'),
+        row.get('ebitda_prior_year'),
+        row.get('ebitda_margin_prior_pct'),
+        row.get('cash_balance_prior_month'),
         None
     ]
 }

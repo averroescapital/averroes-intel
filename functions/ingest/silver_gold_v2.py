@@ -14,12 +14,12 @@ Unit conventions:
 """
 import pandas as pd
 
-TECH_MRR_KPIS = {"TECH_MRR", "LTM_TECH_MRR"}
+RAW_POUND_KPIS = {"TECH_MRR", "LTM_TECH_MRR", "SERVICES_MRR", "LTM_SERVICES_MRR"}
 
 
 def normalize_unit(kpi: str, value: float, era: str) -> float:
-    """Normalize Tech MRR to £k (Era 3 source is raw £)."""
-    if kpi in TECH_MRR_KPIS and era == "era3":
+    """Normalize MRR to £k (Era 3 source is raw £)."""
+    if kpi in RAW_POUND_KPIS and era == "era3":
         return value / 1000.0
     return value
 
@@ -113,6 +113,15 @@ def build_silver_from_parsed(parsed_rows: list, source_file: str) -> pd.DataFram
                                  "source_file": "derived", "source_sheet": "derived",
                                  "source_cell": "TECH_MRR * 12"})
 
+        # Services ARR = Services MRR * 12 (services MRR is in raw £ for era3)
+        services_mrr = get("SERVICES_MRR", None)
+        if services_mrr is not None:
+            derived_rows.append({"period": period, "kpi": "SERVICES_ARR",
+                                 "value": services_mrr * 12, "value_type": "actual",
+                                 "business_line": "services", "era": era_for_period,
+                                 "source_file": "derived", "source_sheet": "derived",
+                                 "source_cell": "SERVICES_MRR * 12"})
+
     if derived_rows:
         df_derived = pd.DataFrame(derived_rows)
         df_derived["period"] = pd.to_datetime(df_derived["period"]).dt.normalize()
@@ -120,6 +129,11 @@ def build_silver_from_parsed(parsed_rows: list, source_file: str) -> pd.DataFram
 
     df = df.sort_values(["period", "kpi", "business_line", "value_type"]).reset_index(drop=True)
     return df
+
+
+def _div_k(v):
+    """Convert raw £ to £k (divide by 1000). Returns None if input is None."""
+    return round(v / 1000.0, 5) if v is not None else None
 
 
 def pivot_to_gold(silver: pd.DataFrame, portco_id: str = "portco-alpha") -> pd.DataFrame:
@@ -165,11 +179,17 @@ def pivot_to_gold(silver: pd.DataFrame, portco_id: str = "portco-alpha") -> pd.D
             "tech_mrr_prior_year": pick("TECH_MRR", "prior_year"),
             "tech_mrr_ytd_actual": pick("LTM_TECH_MRR", "actual"),
 
+            "services_mrr_actual":     pick("SERVICES_MRR", "actual"),
+            "services_mrr_budget":     pick("SERVICES_MRR", "budget"),
+            "services_mrr_prior_year": pick("SERVICES_MRR", "prior_year"),
+            "services_mrr_ytd_actual": pick("LTM_SERVICES_MRR", "actual"),
+
             "ecommerce_mrr_actual": pick("ECOMMERCE_MRR", "actual", "ecommerce"),
             "ems_mrr_actual":       pick("EMS_MRR", "actual", "ems"),
             "tech_arr":             pick("TECH_ARR", "actual"),
             "ecommerce_arr":        pick("ECOMMERCE_ARR", "actual", "ecommerce"),
             "ems_arr":              pick("EMS_ARR", "actual", "ems"),
+            "services_arr":         pick("SERVICES_ARR", "actual", "services"),
 
             "revenue_ecommerce_actual":     pick("REVENUE_ECOMMERCE", "actual", "ecommerce"),
             "revenue_ecommerce_budget":     pick("REVENUE_ECOMMERCE", "budget", "ecommerce"),
@@ -223,9 +243,39 @@ def pivot_to_gold(silver: pd.DataFrame, portco_id: str = "portco-alpha") -> pd.D
             "modules_pipeline":       pick("MODULES_PIPELINE", "actual"),
 
             "arpc_actual":           pick("ARPC", "actual"),
-            "tech_gross_margin_pct": pick("TECH_GROSS_MARGIN", "actual"),
+            "arpc_budget":           pick("ARPC", "budget"),
+            "arpc_ytd_actual":       pick("ARPC_YTD", "actual"),
+            "arpc_ytd_budget":       pick("ARPC_YTD", "budget"),
+
+            "tech_gross_margin_pct":        pick("TECH_GROSS_MARGIN", "actual"),
+            "tech_gross_margin_budget_pct":  pick("TECH_GROSS_MARGIN", "budget"),
+            "tech_gross_margin_prior_pct":   pick("TECH_GROSS_MARGIN", "prior_year"),
+            "tech_gross_margin_ytd_pct":     pick("TECH_GROSS_MARGIN_YTD", "actual"),
+            "tech_gross_margin_ytd_budget_pct": pick("TECH_GROSS_MARGIN_YTD", "budget"),
+
+            "ebitda_margin_pct":            pick("EBITDA_MARGIN", "actual"),
+            "ebitda_margin_budget_pct":     pick("EBITDA_MARGIN", "budget"),
+            "ebitda_margin_prior_pct":      pick("EBITDA_MARGIN", "prior_year"),
+            "ebitda_margin_ytd_pct":        pick("EBITDA_MARGIN_YTD", "actual"),
+            "ebitda_margin_ytd_budget_pct": pick("EBITDA_MARGIN_YTD", "budget"),
+
+            # CASH_FIN_KPI is in raw £ from Financial KPIs; convert to £k
+            "cash_balance_budget":         _div_k(pick("CASH_FIN_KPI", "budget")),
+            "cash_balance_prior_month":    _div_k(pick("CASH_FIN_KPI", "prior_year")),
+
+            "free_cash_conversion_month":  pick("FREE_CASH_CONVERSION", "actual"),
+            "free_cash_conversion_budget": pick("FREE_CASH_CONVERSION", "budget"),
+            "free_cash_conversion_ytd":    pick("FREE_CASH_CONVERSION_YTD", "actual"),
+
+            "indicative_ev":             _div_k(pick("INDICATIVE_EV", "actual")),
+            "sm_efficiency":             pick("SM_EFFICIENCY", "actual"),
+            "ytd_revenue_growth_pct":    pick("YTD_REVENUE_GROWTH", "actual"),
+            "ytd_revenue_growth_budget": pick("YTD_REVENUE_GROWTH", "budget"),
+            "time_to_value_days":        pick("TIME_TO_VALUE", "actual"),
+
             "rule_of_40":            pick("RULE_OF_40", "actual"),
             "revenue_churn_pct":     pick("REVENUE_CHURN", "actual"),
+            "revenue_churn_target":  pick("REVENUE_CHURN", "budget"),
 
             # GL Covenants (Era 2+)
             "gl_arr_actual":           pick("GL_ARR_ACTUAL", "actual"),
@@ -253,6 +303,17 @@ def pivot_to_gold(silver: pd.DataFrame, portco_id: str = "portco-alpha") -> pd.D
             "gr_cash_covenant":             pick("GR_CASH_COVENANT", "actual"),
             "gr_cash_ratio":                pick("GR_CASH_RATIO", "actual"),
 
+            # Revenue Waterfall (Era 3)
+            "wf_revenue_start":       pick("WF_REVENUE_START", "actual"),
+            "wf_one_off_prev":        pick("WF_ONE_OFF_PREV", "actual"),
+            "wf_one_off_ytd":         pick("WF_ONE_OFF_YTD", "actual"),
+            "wf_recurring_growth":    pick("WF_RECURRING_GROWTH", "actual"),
+            "wf_arr_ytg":             pick("WF_ARR_TO_GO", "actual"),
+            "wf_weighted_pipeline":   pick("WF_WEIGHTED_PIPELINE", "actual"),
+            "wf_budget_assumptions":  pick("WF_BUDGET_ASSUMPTIONS", "actual"),
+            "wf_revenue_gap":         pick("WF_REVENUE_GAP", "actual"),
+            "wf_revenue_end":         pick("WF_REVENUE_END", "actual"),
+
             "currency":    "GBP",
             "data_source": f"ma_parser:{era}",
             "era":         era,
@@ -276,4 +337,14 @@ def pivot_to_gold(silver: pd.DataFrame, portco_id: str = "portco-alpha") -> pd.D
     gold = pd.DataFrame(gold_rows)
     gold["period"] = pd.to_datetime(gold["period"]).dt.normalize()
     gold = gold.sort_values("period").reset_index(drop=True)
+
+    # Compute cumulative YTD fields within each FY
+    if not gold.empty and "fy" in gold.columns:
+        for col_actual, col_ytd in [
+            ("ebitda_actual", "ebitda_ytd_actual"),
+            ("ebitda_budget", "ebitda_ytd_budget"),
+        ]:
+            if col_actual in gold.columns:
+                gold[col_ytd] = gold.groupby("fy")[col_actual].cumsum()
+
     return gold
