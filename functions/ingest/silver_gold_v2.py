@@ -306,6 +306,8 @@ def pivot_to_gold(silver: pd.DataFrame, portco_id: str = "portco-alpha") -> pd.D
 
             "indicative_ev":             _div_k(pick("INDICATIVE_EV", "actual")),
             "sm_efficiency":             pick("SM_EFFICIENCY", "actual"),
+            "sm_cost_ytd":               pick("SM_COST_YTD", "actual"),
+            "tcv_ytd":                   pick("TCV_YTD", "actual"),
             "ytd_revenue_growth_pct":    pick("YTD_REVENUE_GROWTH", "actual"),
             "ytd_revenue_growth_budget": pick("YTD_REVENUE_GROWTH", "budget"),
             "time_to_value_days":        pick("TIME_TO_VALUE", "actual"),

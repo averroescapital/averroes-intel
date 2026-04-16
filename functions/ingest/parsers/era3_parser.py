@@ -393,6 +393,23 @@ def parse_cash_flow(wb, period, rows):
         rows.append(row(period, 'CASH_BURN', -ncf, 'actual', None, sn, ws.cell(26, 3).coordinate))
 
 
+def parse_kpi_data(wb, period, rows):
+    """Extract S&M cost and TCV from 'KPI data' sheet.
+    Layout: R1 headers (Q1/Q2/Q3/Q4/YTD), R6=TCV, R8=Sales cost. Col F=YTD."""
+    sn = find_sheet(wb, 'KPI data')
+    if not sn or period is None:
+        return
+    ws = wb[sn]
+    # YTD Sales cost in col 6 (F), row 8
+    sales_cost_ytd = safe_number(ws.cell(8, 6).value)
+    if sales_cost_ytd is not None:
+        rows.append(row(period, 'SM_COST_YTD', sales_cost_ytd, 'actual', None, sn, ws.cell(8, 6).coordinate))
+    # YTD TCV in col 6, row 6
+    tcv_ytd = safe_number(ws.cell(6, 6).value)
+    if tcv_ytd is not None:
+        rows.append(row(period, 'TCV_YTD', tcv_ytd, 'actual', None, sn, ws.cell(6, 6).coordinate))
+
+
 def parse(wb, file_name=None):
     rows = []
     # Financial KPIs is the authoritative source for Tech MRR in Era 3
@@ -424,4 +441,5 @@ def parse(wb, file_name=None):
     parse_cash_flow(wb, period, rows)
     parse_revenue_waterfall(wb, period, rows)
     parse_customer_numbers(wb, rows)
+    parse_kpi_data(wb, period, rows)
     return rows

@@ -444,30 +444,28 @@ def harmonize_v2_columns(df):
     # ------------------------------------------------------------------
     # Derived SaaS unit economics: CAC, CAC Payback, LTV, LTV:CAC
     # ------------------------------------------------------------------
-    # S&M Cost (monthly) ≈ Total Overheads × proportion.
-    # Since we have S&M Efficiency = S&M Cost (YTD) / TCV (YTD), and
-    # we don't have isolated monthly S&M, we approximate:
-    #   Monthly S&M Cost ≈ Revenue × (1 - Contribution Margin)
-    # But more directly, we can derive LTV from ARPC and churn:
-    #   LTV = (ARPC_monthly × Gross_Margin) / Monthly_Churn
-    #   CAC Payback = CAC / (ARPC_monthly × Gross_Margin)
-    # Without new customer count, CAC is estimated from S&M efficiency:
-    #   S&M Efficiency = S&M Cost / New ARR ≈ S&M Cost / (New Modules × ARPC × 12)
-    # We approximate CAC = Overheads allocated to S&M / net new properties
+    # S&M Cost: use actual YTD sales cost from KPI data sheet (in £),
+    # annualise and divide by 12 to get monthly S&M spend.
+    df["sm_cost_ytd"] = _safe("sm_cost_ytd")        # raw £ YTD
+    df["tcv_ytd"] = _safe("tcv_ytd")                # raw £ YTD
 
-    arpc_m = df["arpc_actual"]                      # monthly ARPC in £
-    gm = df["tech_gross_margin_pct"] / 100          # decimal gross margin
-    churn_annual = df["revenue_churn_pct"]           # annual churn as decimal (0.027 = 2.7%)
-    churn_monthly = churn_annual / 12               # monthly churn
+    arpc_m = df["arpc_actual"]                       # monthly ARPC in £
+    gm = df["tech_gross_margin_pct"] / 100           # decimal gross margin
+    churn_annual = df["revenue_churn_pct"]            # annual churn as decimal
+    churn_monthly = churn_annual / 12                # monthly churn
+
+    # Annualise YTD S&M cost → monthly
+    # fy_month_num = how many months into the FY we are (1-12)
+    fy_months_elapsed = df["fy_month_num"].replace(0, np.nan)
+    sm_annual = df["sm_cost_ytd"] / fy_months_elapsed * 12   # annualised S&M (£)
+    sm_monthly = sm_annual / 12                               # monthly S&M (£)
 
     # LTV = (Monthly ARPC × Gross Margin) / Monthly Churn
     df["ltv"] = (arpc_m * gm) / churn_monthly.replace(0, np.nan)
 
-    # CAC approximation: total overheads (monthly, abs) as S&M proxy
-    # This is a rough proxy; refine when isolated S&M data is available
-    sm_cost_monthly = df["total_overheads"].abs()    # £k
-    new_properties = df["properties_live"].diff()    # net new properties/month
-    df["cac"] = (sm_cost_monthly * 1000) / new_properties.replace(0, np.nan)  # £ per customer
+    # CAC = Monthly S&M / net new properties per month
+    new_properties = df["properties_live"].diff()
+    df["cac"] = sm_monthly / new_properties.replace(0, np.nan)
 
     # CAC Payback (months) = CAC / (ARPC × Gross Margin)
     monthly_value = arpc_m * gm
