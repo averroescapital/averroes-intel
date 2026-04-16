@@ -1,0 +1,445 @@
+kpis:
+  # REVENUE
+  - name: "arr"
+    display_name: "ARR"
+    category: "Revenue"
+    unit: "gbp_k"
+    benchmark: null
+    benchmark_rule: "greater_than_prev"
+    frequency: "monthly"
+    aliases: ["Annual Recurring Revenue", "ARR (GBP k)", "ARR (£k)", "ARR (£000s)", "Annual Run Rate"]
+
+  - name: "revenue"
+    display_name: "Total Revenue"
+    category: "Revenue"
+    unit: "gbp_k"
+    benchmark: null
+    benchmark_rule: "greater_than_prev"
+    frequency: "monthly"
+    aliases: ["Total Revenue (£k)", "Revenue (£k)", "Monthly Revenue", "Net Revenue"]
+
+  - name: "new_arr"
+    display_name: "New ARR"
+    category: "Revenue"
+    unit: "gbp_k"
+    benchmark: null
+    benchmark_rule: "track_ratio"
+    frequency: "monthly"
+    aliases: ["New ARR (GBP k)", "New Logo ARR", "New Business ARR"]
+
+  - name: "tech_mrr"
+    display_name: "Tech MRR"
+    category: "Revenue"
+    unit: "gbp"
+    benchmark: null
+    benchmark_rule: "greater_than_prev"
+    frequency: "monthly"
+    aliases: ["TECH MRR", "Tech Revenue", "Software MRR"]
+
+  - name: "services_mrr"
+    display_name: "Services MRR"
+    category: "Revenue"
+    unit: "gbp"
+    benchmark: null
+    benchmark_rule: "greater_than_prev"
+    frequency: "monthly"
+    aliases: ["SERVICES MRR", "Services Revenue", "Consulting MRR"]
+
+  - name: "expansion_arr"
+    display_name: "Expansion ARR"
+    category: "Revenue"
+    unit: "gbp_k"
+    benchmark_rule: "gt_30pct_new_arr"
+    frequency: "monthly"
+    aliases: ["Expansion ARR (GBP k)", "Upsell ARR", "Cross-sell ARR"]
+
+  - name: "churn_arr"
+    display_name: "Churn ARR"
+    category: "Revenue"
+    unit: "gbp_k"
+    benchmark: null
+    benchmark_rule: "minimise"
+    frequency: "monthly"
+    aliases: ["Churn ARR (GBP k)", "Lost ARR", "Churned ARR"]
+
+  - name: "net_new_arr"
+    display_name: "Net New ARR"
+    category: "Revenue"
+    unit: "gbp_k"
+    benchmark: null
+    benchmark_rule: "positive"
+    frequency: "monthly"
+    aliases: ["Net New ARR (GBP k)", "Net ARR Movement"]
+
+  - name: "arr_growth_rate"
+    display_name: "ARR Growth Rate"
+    category: "Revenue"
+    unit: "pct"
+    benchmark: 20
+    benchmark_rule: "greater_than"
+    frequency: "monthly"
+    aliases: ["ARR Growth Rate (%)", "ARR Growth %", "YoY Growth"]
+
+  # RETENTION
+  - name: "nrr"
+    display_name: "NRR"
+    category: "Retention"
+    unit: "pct"
+    benchmark: 110
+    benchmark_rule: "greater_than"
+    frequency: "monthly"
+    aliases: ["NRR (%)", "Net Revenue Retention", "Net Dollar Retention", "NDR"]
+
+  - name: "grr"
+    display_name: "GRR"
+    category: "Retention"
+    unit: "pct"
+    benchmark: 90
+    benchmark_rule: "greater_than"
+    frequency: "monthly"
+    aliases: ["GRR (%)", "Gross Revenue Retention", "Gross Retention"]
+
+  - name: "logo_churn_rate"
+    display_name: "Logo Churn Rate"
+    category: "Retention"
+    unit: "pct"
+    benchmark: 5
+    benchmark_rule: "less_than"
+    frequency: "monthly"
+    aliases: ["Logo Churn Rate (%)", "Customer Churn Rate", "Logo Churn"]
+
+  # UNIT ECONOMICS
+  - name: "gross_margin_pct"
+    display_name: "Gross Margin %"
+    category: "Unit Economics"
+    unit: "pct"
+    benchmark: 70
+    benchmark_rule: "greater_than"
+    frequency: "monthly"
+    aliases: ["Gross Margin (%)", "GM%", "Gross Margin %"]
+
+  - name: "cogs"
+    display_name: "COGS"
+    category: "Unit Economics"
+    unit: "gbp_k"
+    benchmark: null
+    benchmark_rule: "minimise"
+    frequency: "monthly"
+    aliases: ["COGS (£k)", "Cost of Goods Sold", "Direct Costs"]
+
+  - name: "cac"
+    display_name: "CAC"
+    category: "Unit Economics"
+    unit: "gbp"
+    benchmark: null
+    benchmark_rule: "payback_lt_18mo"
+    frequency: "monthly"
+    aliases: ["CAC (GBP)", "CAC (£)", "Customer Acquisition Cost"]
+
+  - name: "cac_payback"
+    display_name: "CAC Payback"
+    category: "Unit Economics"
+    unit: "months"
+    benchmark: 12
+    benchmark_rule: "less_than"
+    frequency: "monthly"
+    aliases: ["CAC Payback (months)", "Payback Period", "CAC Payback Months"]
+
+  - name: "ltv_cac"
+    display_name: "LTV:CAC"
+    category: "Unit Economics"
+    unit: "x"
+    benchmark: 3
+    benchmark_rule: "greater_than"
+    frequency: "monthly"
+    aliases: ["LTV:CAC", "LTV/CAC", "LTV:CAC Ratio"]
+
+  # EFFICIENCY
+  - name: "net_burn"
+    display_name: "Net Burn"
+    category: "Efficiency"
+    unit: "gbp_k"
+    benchmark: null
+    benchmark_rule: "track_runway"
+    frequency: "monthly"
+    aliases: ["Net Burn (GBP k)", "Monthly Cash Burn (k)", "Net Burn (£k)", "Cash Burn"]
+
+  - name: "runway"
+    display_name: "Runway"
+    category: "Efficiency"
+    unit: "months"
+    benchmark: 18
+    benchmark_rule: "greater_than"
+    frequency: "monthly"
+    aliases: ["Runway (months)", "Cash Runway", "Months of Runway"]
+
+  - name: "rule_of_40"
+    display_name: "Rule of 40"
+    category: "Efficiency"
+    unit: "score"
+    benchmark: 40
+    benchmark_rule: "greater_than"
+    frequency: "monthly"
+    aliases: ["Rule of 40", "R40", "Rule of Forty"]
+
+  - name: "sm_efficiency"
+    display_name: "S&M Efficiency"
+    category: "Efficiency"
+    unit: "score"
+    benchmark: 1.0
+    benchmark_rule: "greater_than"
+    frequency: "monthly"
+    aliases: ["S&M Efficiency", "Sales Efficiency", "Magic Number"]
+
+  - name: "arpu"
+    display_name: "ARPC"
+    category: "Revenue"
+    unit: "gbp"
+    benchmark: null
+    benchmark_rule: "greater_than_prev"
+    frequency: "monthly"
+    aliases: ["AVE REVENUE PER CUSTOMER", "ARPC", "ARPU"]
+
+  - name: "ebitda_margin"
+    display_name: "EBITDA Margin"
+    category: "Efficiency"
+    unit: "pct"
+    benchmark: 20
+    benchmark_rule: "path_to"
+    frequency: "monthly"
+    aliases: ["EBITDA Margin (%)", "EBITDA Margin %", "EBITDA%"]
+
+  # GTM
+  - name: "pipeline_coverage"
+    display_name: "Pipeline Coverage"
+    category: "GTM"
+    unit: "x"
+    benchmark: 3
+    benchmark_rule: "greater_than"
+    frequency: "monthly"
+    aliases: ["Pipeline Coverage (x)", "Pipeline Coverage (×)", "Pipeline/Quota"]
+
+  - name: "quota_attainment"
+    display_name: "Quota Attainment"
+    category: "GTM"
+    unit: "pct"
+    benchmark: 70
+    benchmark_rule: "greater_than"
+    frequency: "monthly"
+    aliases: ["Quota Attainment (%)", "Quota Attainment %", "% to Quota"]
+
+  - name: "win_rate"
+    display_name: "Win Rate"
+    category: "GTM"
+    unit: "pct"
+    benchmark: 30
+    benchmark_rule: "greater_than"
+    frequency: "monthly"
+    aliases: ["Win Rate (%)", "Win Rate %", "Close Rate"]
+
+  - name: "sales_cycle"
+    display_name: "Sales Cycle"
+    category: "GTM"
+    unit: "days"
+    benchmark: null
+    benchmark_rule: "track_by_segment"
+    frequency: "monthly"
+    aliases: ["Sales Cycle (days)", "Avg Sales Cycle", "Days to Close"]
+
+  # CUSTOMER
+  - name: "nps"
+    display_name: "NPS"
+    category: "Customer"
+    unit: "score"
+    benchmark: 50
+    benchmark_rule: "greater_than"
+    frequency: "monthly"
+    aliases: ["NPS Score", "NPS", "Net Promoter Score"]
+
+  - name: "csat"
+    display_name: "CSAT"
+    category: "Customer"
+    unit: "pct"
+    benchmark: 85
+    benchmark_rule: "greater_than"
+    frequency: "monthly"
+    aliases: ["CSAT (%)", "CSAT %", "Customer Satisfaction"]
+
+  - name: "customer_health_score"
+    display_name: "Customer Health Score"
+    category: "Customer"
+    unit: "score"
+    benchmark: 70
+    benchmark_rule: "greater_than"
+    frequency: "monthly"
+    aliases: ["Avg Customer Health Score", "Health Score", "Customer Health"]
+
+  # PEOPLE
+  - name: "total_fte"
+    display_name: "Total FTE"
+    category: "People"
+    unit: "count"
+    benchmark: null
+    benchmark_rule: "per_plan"
+    frequency: "monthly"
+    aliases: ["Total FTE", "Headcount", "Total Headcount", "FTE"]
+
+  - name: "arr_per_fte"
+    display_name: "ARR per FTE"
+    category: "People"
+    unit: "gbp_k"
+    benchmark: 150
+    benchmark_rule: "greater_than"
+    frequency: "monthly"
+    aliases: ["ARR per FTE (GBP k)", "ARR/FTE", "ARR per FTE (£k)"]
+
+  - name: "enps"
+    display_name: "eNPS"
+    category: "People"
+    unit: "score"
+    benchmark: 30
+    benchmark_rule: "greater_than"
+    frequency: "monthly"
+    aliases: ["eNPS", "Employee NPS", "Employee Net Promoter"]
+
+  - name: "personnel_costs"
+    display_name: "Personnel Costs"
+    category: "People"
+    unit: "gbp_k"
+    benchmark: null
+    benchmark_rule: "less_than_budget"
+    frequency: "monthly"
+    aliases: ["Personnel Costs (£k)", "Wages & Salaries", "Staff Costs"]
+
+  - name: "sales_marketing_costs"
+    display_name: "S&M Costs"
+    category: "Efficiency"
+    unit: "gbp_k"
+    benchmark: null
+    benchmark_rule: "minimise"
+    frequency: "monthly"
+    aliases: ["Sales & Marketing (£k)", "S&M Costs", "Marketing Spend"]
+
+  - name: "rd_costs"
+    display_name: "R&D Costs"
+    category: "Efficiency"
+    unit: "gbp_k"
+    benchmark: null
+    benchmark_rule: "minimise"
+    frequency: "monthly"
+    aliases: ["R&D Expenses (£k)", "Product Development", "R&D Spend"]
+
+  - name: "ga_costs"
+    display_name: "G&A Costs"
+    category: "Efficiency"
+    unit: "gbp_k"
+    benchmark: null
+    benchmark_rule: "minimise"
+    frequency: "monthly"
+    aliases: ["G&A Expenses (£k)", "G&A", "Overheads"]
+
+  - name: "cash_at_bank"
+    display_name: "Cash at Bank"
+    category: "Efficiency"
+    unit: "gbp_k"
+    benchmark: null
+    benchmark_rule: "track_runway"
+    frequency: "monthly"
+    aliases: ["Cash at Bank (£k)", "Cash Balance", "Closing Cash"]
+
+# Portco configurations
+portcos:
+  - id: "portco-alpha"
+    display_name: "Portco Alpha"
+    expected_cadence: "monthly"
+    reporting_deadline_day: 10     # expect data by 10th of following month
+    stage: "Series B"
+    entry_date: "2023-01"
+    entry_arr: 2800                # GBP k
+    currency: "GBP"
+
+  - id: "portco-beta"
+    display_name: "Portco Beta"
+    expected_cadence: "monthly"
+    reporting_deadline_day: 15
+    stage: "Series A"
+    entry_date: "2023-07"
+    entry_arr: 1500
+    currency: "GBP"
+
+  - id: "portco-gamma"
+    display_name: "Portco Gamma"
+    expected_cadence: "quarterly"
+    reporting_deadline_day: 20
+    stage: "Series B"
+    entry_date: "2024-01"
+    entry_arr: 4200
+    currency: "GBP"
+
+# Anomaly detection rules
+anomaly_rules:
+  - name: "nrr_drop_2pp"
+    description: "NRR drops more than 2 percentage points in one month"
+    kpi: "nrr"
+    condition: "mom_delta < -2"
+    severity: "red"
+    action: "Churn wave incoming in 60-90 days. Pull churn cohort data immediately."
+
+  - name: "pipeline_below_3x"
+    description: "Pipeline coverage below 3x for 2+ consecutive months"
+    kpi: "pipeline_coverage"
+    condition: "value < 3 AND consecutive_months >= 2"
+    severity: "red"
+    action: "ARR miss risk next quarter. CRO pipeline review needed."
+
+  - name: "runway_below_12"
+    description: "Cash runway below 12 months"
+    kpi: "runway"
+    condition: "value < 12"
+    severity: "red"
+    action: "Immediate board trigger. Raise flag with management."
+
+  - name: "correlated_deterioration"
+    description: "2 or more KPIs deteriorating simultaneously"
+    kpi: "any"
+    condition: "count_deteriorating >= 2 AND consecutive_months >= 1"
+    severity: "red"
+    action: "Immediate board discussion. Do not wait for trend confirmation."
+
+  - name: "rule_of_40_below_30"
+    description: "Rule of 40 below 30 for 3+ months"
+    kpi: "rule_of_40"
+    condition: "value < 30 AND consecutive_months >= 3"
+    severity: "amber"
+    action: "Growth or efficiency is structurally broken. Diagnose root cause."
+
+  - name: "gross_margin_falling_arr_growing"
+    description: "Gross margin declining while ARR is growing"
+    kpi: "gross_margin"
+    condition: "trend_3m == 'down' AND arr_trend_3m == 'up'"
+    severity: "amber"
+    action: "COGS creep. Audit hosting, support, implementation costs."
+
+  - name: "nps_below_40"
+    description: "NPS below 40 for 2+ consecutive months"
+    kpi: "nps"
+    condition: "value < 40 AND consecutive_months >= 2"
+    severity: "amber"
+    action: "Product-market fit drift or CS execution issue. Customer health audit."
+
+  - name: "win_rate_falling_pipeline_up"
+    description: "Win rate declining while pipeline is growing"
+    kpi: "win_rate"
+    condition: "trend_3m == 'down' AND pipeline_trend_3m == 'up'"
+    severity: "amber"
+    action: "Conversion problem. Run win/loss analysis on last 20 deals."
+
+# RAG status rules
+rag_rules:
+  green: "At or above benchmark"
+  amber: "Within 10% of benchmark"
+  red: "More than 10% below benchmark"
+  # For metrics where lower is better (churn, burn, CAC payback):
+  green_inverse: "At or below benchmark"
+  amber_inverse: "Within 10% above benchmark"
+  red_inverse: "More than 10% above benchmark"

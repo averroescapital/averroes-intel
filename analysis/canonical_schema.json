@@ -1,0 +1,1214 @@
+{
+  "canonical_period": "2026-02",
+  "canonical_file": "4. FY26 Management Accounts - February 26.xlsx",
+  "core_sheets": {
+    "P&L Detail": {
+      "actual_name": "P&L Detail",
+      "trailing_space": false,
+      "dimensions": "248x39",
+      "labels_col_a": [
+        [
+          1,
+          "P&L Summary"
+        ],
+        [
+          5,
+          "Ecommerce"
+        ],
+        [
+          6,
+          "EMS"
+        ],
+        [
+          7,
+          "Services"
+        ],
+        [
+          8,
+          "Total Revenue"
+        ],
+        [
+          9,
+          "Ecommerce"
+        ],
+        [
+          10,
+          "EMS"
+        ],
+        [
+          11,
+          "Services"
+        ],
+        [
+          12,
+          "Total Direct Costs"
+        ],
+        [
+          13,
+          "Ecommerce"
+        ],
+        [
+          14,
+          "EMS"
+        ],
+        [
+          15,
+          "Services"
+        ],
+        [
+          16,
+          "Total Staff Costs"
+        ],
+        [
+          17,
+          "Ecommerce"
+        ],
+        [
+          18,
+          "EMS"
+        ],
+        [
+          19,
+          "Services"
+        ],
+        [
+          20,
+          "Total Direct Contribution"
+        ],
+        [
+          21,
+          "Direct Contribution %"
+        ],
+        [
+          22,
+          "Net Central Staff Costs"
+        ],
+        [
+          23,
+          "Office"
+        ],
+        [
+          24,
+          "Premises"
+        ],
+        [
+          25,
+          "Legal & Professional"
+        ],
+        [
+          26,
+          "Marketing"
+        ],
+        [
+          27,
+          "Finance"
+        ],
+        [
+          28,
+          "Recruitment"
+        ],
+        [
+          29,
+          "IT & Software"
+        ],
+        [
+          30,
+          "Travel Costs"
+        ],
+        [
+          31,
+          "People Costs"
+        ],
+        [
+          32,
+          "Other Costs"
+        ],
+        [
+          33,
+          "Total Overheads"
+        ],
+        [
+          34,
+          "EBITDA"
+        ],
+        [
+          35,
+          "EBITDA %"
+        ],
+        [
+          36,
+          "Depreciation & Amortisation"
+        ],
+        [
+          37,
+          "Exceptional Costs"
+        ],
+        [
+          38,
+          "Interco Interest"
+        ],
+        [
+          39,
+          "Growth Lending Interest"
+        ],
+        [
+          40,
+          "Tax Charge"
+        ],
+        [
+          41,
+          "Profit/Loss after Tax"
+        ],
+        [
+          42,
+          "Profit/Loss after Tax %"
+        ],
+        [
+          43,
+          "Check"
+        ]
+      ],
+      "labels_col_b": [
+        [
+          2,
+          "Actual"
+        ],
+        [
+          3,
+          "2026-02-01"
+        ],
+        [
+          4,
+          "\u00a3k"
+        ],
+        [
+          5,
+          "339.47573"
+        ],
+        [
+          6,
+          "140.7038"
+        ],
+        [
+          7,
+          "400.13866"
+        ],
+        [
+          8,
+          "880.31819"
+        ],
+        [
+          9,
+          "-36.803729999999995"
+        ],
+        [
+          10,
+          "-35.86793"
+        ],
+        [
+          11,
+          "-61.91288"
+        ],
+        [
+          12,
+          "-134.58454"
+        ],
+        [
+          13,
+          "-130.84325999999996"
+        ],
+        [
+          14,
+          "-123.10637000000003"
+        ],
+        [
+          15,
+          "-243.78806"
+        ],
+        [
+          16,
+          "-497.73769"
+        ],
+        [
+          17,
+          "171.82874000000007"
+        ],
+        [
+          18,
+          "-18.270500000000027"
+        ],
+        [
+          19,
+          "94.43771999999998"
+        ],
+        [
+          20,
+          "247.9959599999999"
+        ],
+        [
+          21,
+          "0.2817117297099131"
+        ],
+        [
+          22,
+          "-199.4845"
+        ],
+        [
+          23,
+          "-11.21311"
+        ],
+        [
+          24,
+          "-24.60622"
+        ],
+        [
+          25,
+          "-7.458"
+        ],
+        [
+          26,
+          "-14.695170000000001"
+        ],
+        [
+          27,
+          "-4.89783"
+        ],
+        [
+          28,
+          "-15.66"
+        ],
+        [
+          29,
+          "-30.463860000000004"
+        ],
+        [
+          30,
+          "-27.564280000000004"
+        ],
+        [
+          31,
+          "-19.992630000000005"
+        ],
+        [
+          32,
+          "0"
+        ],
+        [
+          33,
+          "-356.03560000000004"
+        ],
+        [
+          34,
+          "-108.03964000000013"
+        ],
+        [
+          35,
+          "-0.12272794226823842"
+        ],
+        [
+          36,
+          "-243.06639"
+        ],
+        [
+          37,
+          "-26.707279999999997"
+        ],
+        [
+          38,
+          "0"
+        ],
+        [
+          39,
+          "-50.06183"
+        ],
+        [
+          40,
+          "40"
+        ],
+        [
+          41,
+          "-387.8751400000001"
+        ]
+      ],
+      "date_cells": {
+        "R3C2": "2026-02-01",
+        "R3C3": "2026-02-01",
+        "R3C5": "2025-02-28"
+      }
+    },
+    "P&L Summary": {
+      "actual_name": "P&L Summary ",
+      "trailing_space": true,
+      "dimensions": "238x19",
+      "labels_col_a": [
+        [
+          1,
+          "Company Summary"
+        ],
+        [
+          3,
+          "FINANCE - October 2023"
+        ],
+        [
+          5,
+          "Ecommerce"
+        ],
+        [
+          6,
+          "EMS"
+        ],
+        [
+          7,
+          "Services"
+        ],
+        [
+          8,
+          "Total Revenue"
+        ],
+        [
+          9,
+          "Ecommerce"
+        ],
+        [
+          10,
+          "EMS"
+        ],
+        [
+          11,
+          "Services"
+        ],
+        [
+          12,
+          "Total Direct & Staff Costs"
+        ],
+        [
+          13,
+          "Ecommerce"
+        ],
+        [
+          14,
+          "EMS"
+        ],
+        [
+          15,
+          "Services"
+        ],
+        [
+          16,
+          "Total Direct Contribution"
+        ],
+        [
+          17,
+          "Total Overheads"
+        ],
+        [
+          18,
+          "EBITDA"
+        ],
+        [
+          19,
+          "Capitalised Development"
+        ],
+        [
+          20,
+          "EBITDA Less Capex"
+        ]
+      ],
+      "labels_col_b": [
+        [
+          2,
+          "Actual"
+        ],
+        [
+          3,
+          "2026-02-28"
+        ],
+        [
+          4,
+          "\u00a3k"
+        ],
+        [
+          5,
+          "339.47573"
+        ],
+        [
+          6,
+          "140.7038"
+        ],
+        [
+          7,
+          "400.13866"
+        ],
+        [
+          8,
+          "880.31819"
+        ],
+        [
+          9,
+          "-167.64699"
+        ],
+        [
+          10,
+          "-158.97429999999997"
+        ],
+        [
+          11,
+          "-305.70094"
+        ],
+        [
+          12,
+          "-632.32223"
+        ],
+        [
+          13,
+          "171.82874"
+        ],
+        [
+          14,
+          "-18.27049999999997"
+        ],
+        [
+          15,
+          "94.43772000000001"
+        ],
+        [
+          16,
+          "247.99596000000005"
+        ],
+        [
+          17,
+          "-356.03560000000004"
+        ],
+        [
+          18,
+          "-108.03963999999999"
+        ],
+        [
+          19,
+          "-326.52892"
+        ],
+        [
+          20,
+          "-434.56856000000005"
+        ]
+      ],
+      "date_cells": {
+        "R3C2": "2026-02-28",
+        "R3C3": "2026-02-28",
+        "R3C5": "2025-02-28"
+      }
+    },
+    "Financial KPIs": {
+      "actual_name": "Financial KPIs",
+      "trailing_space": false,
+      "dimensions": "83x30",
+      "labels_col_a": [],
+      "labels_col_b": [
+        [
+          1,
+          "FINANCIAL KPIs"
+        ],
+        [
+          3,
+          "TECH MRR - CURRENT MONTH"
+        ],
+        [
+          4,
+          "Prior year"
+        ],
+        [
+          5,
+          "Budget"
+        ],
+        [
+          6,
+          "Actual"
+        ],
+        [
+          19,
+          "AVE REVENUE PER CUSTOMER - CURRENT MONTH"
+        ],
+        [
+          21,
+          "Budget"
+        ],
+        [
+          22,
+          "Actual"
+        ],
+        [
+          35,
+          "TECH GROSS MARGIN (MONTH)"
+        ],
+        [
+          36,
+          "Prior year"
+        ],
+        [
+          37,
+          "Budget"
+        ],
+        [
+          38,
+          "Actual"
+        ],
+        [
+          51,
+          "NET WORKING CAPITAL"
+        ],
+        [
+          52,
+          "Prior month"
+        ],
+        [
+          53,
+          "Budget"
+        ],
+        [
+          54,
+          "Actual"
+        ]
+      ],
+      "date_cells": {
+        "R1C4": "2026-02-28"
+      }
+    },
+    "Balance Sheet": {
+      "actual_name": "Balance Sheet",
+      "trailing_space": false,
+      "dimensions": "1001x21",
+      "labels_col_a": [
+        [
+          1,
+          "Balance Sheet"
+        ],
+        [
+          5,
+          "Fixed Assets"
+        ],
+        [
+          9,
+          "Current Assets"
+        ],
+        [
+          13,
+          "Current Liabilities"
+        ],
+        [
+          18,
+          "Net Working Capital"
+        ],
+        [
+          19,
+          "TA less CL"
+        ],
+        [
+          20,
+          "Long term Creditors"
+        ],
+        [
+          24,
+          "Net Assets"
+        ],
+        [
+          28,
+          "Shareholders Funds"
+        ]
+      ],
+      "labels_col_b": [
+        [
+          5,
+          "Tangible"
+        ],
+        [
+          6,
+          "Intangible"
+        ],
+        [
+          7,
+          "Investments"
+        ],
+        [
+          9,
+          "Trade Debtors"
+        ],
+        [
+          10,
+          "Other Debtors"
+        ],
+        [
+          11,
+          "Cash"
+        ],
+        [
+          13,
+          "Trade Creditors"
+        ],
+        [
+          14,
+          "Accruals & Other Creditors"
+        ],
+        [
+          15,
+          "HMRC - VAT/PAYE"
+        ],
+        [
+          16,
+          "HMRC - Corp/R&D"
+        ],
+        [
+          20,
+          "Interco loan"
+        ],
+        [
+          21,
+          "Debt Financing"
+        ],
+        [
+          22,
+          "Deferred Tax"
+        ],
+        [
+          26,
+          "Share Capital"
+        ],
+        [
+          27,
+          "P&L Reserves"
+        ],
+        [
+          30,
+          "Check"
+        ]
+      ],
+      "date_cells": {
+        "R1C6": "2026-01-01",
+        "R3C3": "2026-02-01",
+        "R3C4": "2026-02-01",
+        "R3C6": "2026-01-31"
+      }
+    },
+    "Headcount": {
+      "actual_name": "Headcount",
+      "trailing_space": false,
+      "dimensions": "62x27",
+      "labels_col_a": [
+        [
+          1,
+          "Headcount"
+        ],
+        [
+          31,
+          "Gross Payroll"
+        ]
+      ],
+      "labels_col_b": [
+        [
+          4,
+          "Ecommerce Product Development"
+        ],
+        [
+          5,
+          "Ecommerce Product"
+        ],
+        [
+          6,
+          "Ecommerce Product Support"
+        ],
+        [
+          7,
+          "Ecommerce Product Performance"
+        ],
+        [
+          8,
+          "Ecommerce Implementations"
+        ],
+        [
+          9,
+          "Ecommerce Sales"
+        ],
+        [
+          10,
+          "Ecommerce Account Management"
+        ],
+        [
+          11,
+          "EMS Product Development"
+        ],
+        [
+          12,
+          "EMS Product"
+        ],
+        [
+          13,
+          "EMS Product Support"
+        ],
+        [
+          14,
+          "EMS Implementation"
+        ],
+        [
+          15,
+          "EMS Sales"
+        ],
+        [
+          16,
+          "EMS Account Management"
+        ],
+        [
+          17,
+          "Services Agency"
+        ],
+        [
+          18,
+          "Services Fulfilment"
+        ],
+        [
+          19,
+          "Services Performance"
+        ],
+        [
+          20,
+          "Services Account Management"
+        ],
+        [
+          21,
+          "Services Sales"
+        ],
+        [
+          22,
+          "Operations HR"
+        ],
+        [
+          23,
+          "Operations Marketing"
+        ],
+        [
+          24,
+          "Operations Finance"
+        ],
+        [
+          25,
+          "Operations Operations"
+        ],
+        [
+          26,
+          "Operations Exec"
+        ],
+        [
+          29,
+          "Revenue per head"
+        ],
+        [
+          35,
+          "Ecommerce Product Development"
+        ],
+        [
+          36,
+          "Ecommerce Product"
+        ],
+        [
+          37,
+          "Ecommerce Product Support"
+        ],
+        [
+          38,
+          "Ecommerce Product Performance"
+        ],
+        [
+          39,
+          "Ecommerce Implementation"
+        ],
+        [
+          40,
+          "Ecommerce Sales"
+        ],
+        [
+          41,
+          "Ecommerce Account Management"
+        ],
+        [
+          42,
+          "EMS Product Development"
+        ],
+        [
+          43,
+          "EMS Product"
+        ],
+        [
+          44,
+          "EMS Product Support"
+        ],
+        [
+          45,
+          "EMS Implementation"
+        ],
+        [
+          46,
+          "EMS Sales"
+        ],
+        [
+          47,
+          "EMS Account Management"
+        ],
+        [
+          48,
+          "Services Agency"
+        ],
+        [
+          49,
+          "Services Fulfilment"
+        ],
+        [
+          50,
+          "Services Performance"
+        ]
+      ],
+      "date_cells": {
+        "R3C3": "2026-02-28",
+        "R3C4": "2026-02-28",
+        "R3C6": "2025-02-28",
+        "R33C3": "2026-02-28",
+        "R33C4": "2026-02-28",
+        "R33C6": "2025-02-28"
+      }
+    },
+    "Revenue Waterfall": {
+      "actual_name": "Revenue Waterfall",
+      "trailing_space": false,
+      "dimensions": "89x16",
+      "labels_col_a": [
+        [
+          2,
+          "FY25 Revenue"
+        ],
+        [
+          3,
+          "FY25 One-off"
+        ],
+        [
+          4,
+          "FY26 One-off YTD"
+        ],
+        [
+          5,
+          "FY26 YTD Recurring Growth"
+        ],
+        [
+          6,
+          "FY26 ARR YTG"
+        ],
+        [
+          7,
+          "FY26 Weighted pipeline"
+        ],
+        [
+          8,
+          "H2 Budget assumption"
+        ],
+        [
+          9,
+          "FY26 Revenue gap"
+        ],
+        [
+          10,
+          "FY26 Budget"
+        ],
+        [
+          15,
+          "Ecomm"
+        ],
+        [
+          16,
+          "Ecomm"
+        ],
+        [
+          17,
+          "Ecomm"
+        ],
+        [
+          18,
+          "EMS"
+        ],
+        [
+          19,
+          "EMS"
+        ],
+        [
+          20,
+          "EMS"
+        ],
+        [
+          21,
+          "EMS"
+        ],
+        [
+          22,
+          "EMS"
+        ],
+        [
+          23,
+          "EMS"
+        ],
+        [
+          24,
+          "Services"
+        ],
+        [
+          25,
+          "Services"
+        ],
+        [
+          26,
+          "Services"
+        ],
+        [
+          27,
+          "Services"
+        ],
+        [
+          28,
+          "Services"
+        ],
+        [
+          29,
+          "Services"
+        ],
+        [
+          34,
+          "Ecomm"
+        ],
+        [
+          35,
+          "EMS"
+        ],
+        [
+          36,
+          "EMS"
+        ],
+        [
+          37,
+          "Services"
+        ],
+        [
+          41,
+          "Ecomm"
+        ],
+        [
+          42,
+          "Ecomm"
+        ],
+        [
+          43,
+          "EMS"
+        ],
+        [
+          44,
+          "EMS"
+        ],
+        [
+          45,
+          "EMS"
+        ],
+        [
+          46,
+          "EMS"
+        ],
+        [
+          47,
+          "Services"
+        ],
+        [
+          48,
+          "Services"
+        ],
+        [
+          49,
+          "Services"
+        ],
+        [
+          50,
+          "Services"
+        ],
+        [
+          51,
+          "Services"
+        ],
+        [
+          55,
+          "Weighted Pipeline"
+        ]
+      ],
+      "labels_col_b": [
+        [
+          2,
+          "10322.531860000001"
+        ],
+        [
+          3,
+          "-935.24956"
+        ],
+        [
+          4,
+          "288.0455"
+        ],
+        [
+          5,
+          "627.0702200000001"
+        ],
+        [
+          6,
+          "538"
+        ],
+        [
+          7,
+          "935.6"
+        ],
+        [
+          8,
+          "960"
+        ],
+        [
+          9,
+          "1103.1792824000004"
+        ],
+        [
+          10,
+          "13839.177302400001"
+        ],
+        [
+          15,
+          "Success fees"
+        ],
+        [
+          16,
+          "Set up fees"
+        ],
+        [
+          17,
+          "Payment fees"
+        ],
+        [
+          18,
+          "Subscription Fees"
+        ],
+        [
+          19,
+          "Set Up Fees"
+        ],
+        [
+          20,
+          "Memberships"
+        ],
+        [
+          21,
+          "Hardware & Installations"
+        ],
+        [
+          22,
+          "Partner Commissions"
+        ],
+        [
+          23,
+          "Payment Fees"
+        ],
+        [
+          24,
+          "Retainer"
+        ],
+        [
+          25,
+          "Projects"
+        ],
+        [
+          26,
+          "Spa Direct"
+        ],
+        [
+          27,
+          "Client Media"
+        ],
+        [
+          28,
+          "Fulfilment"
+        ],
+        [
+          29,
+          "Performance"
+        ],
+        [
+          31,
+          "Check"
+        ],
+        [
+          33,
+          "One off Revenue"
+        ],
+        [
+          34,
+          "Set up fees"
+        ],
+        [
+          35,
+          "Set up fees"
+        ],
+        [
+          36,
+          "Hardware & Installations"
+        ],
+        [
+          37,
+          "Projects"
+        ],
+        [
+          40,
+          "Recurring revenue"
+        ],
+        [
+          41,
+          "Success fees"
+        ],
+        [
+          42,
+          "Payment fees"
+        ],
+        [
+          43,
+          "Subscription Fees"
+        ],
+        [
+          44,
+          "Memberships"
+        ],
+        [
+          45,
+          "Partner Commissions"
+        ],
+        [
+          46,
+          "Payment Fees"
+        ],
+        [
+          47,
+          "Retainer"
+        ],
+        [
+          48,
+          "Spa Direct"
+        ],
+        [
+          49,
+          "Client Media"
+        ]
+      ],
+      "date_cells": {
+        "R57C3": "2026-11-25",
+        "R57C4": "2026-12-25",
+        "R57C5": "2026-01-26",
+        "R57C6": "2026-02-26",
+        "R57C7": "2026-03-26",
+        "R57C8": "2026-04-26"
+      }
+    }
+  }
+}
