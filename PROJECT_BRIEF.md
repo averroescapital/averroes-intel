@@ -44,7 +44,7 @@ Currency: GBP. All monetary figures stored in £k unless suffixed otherwise.
 
 ## 4. Infrastructure
 
-- **GitHub:** `github.com/averroescapital/averroes-portfolio-intel` (private repo)
+- **GitHub:** `github.com/averroescapital/averroes-intel` (public repo, 34+ commits)
 - **GitHub org:** `averroescapital`
 - **GCP project:** `averroes-portfolio-intel`
 - **Region:** `europe-west2`
