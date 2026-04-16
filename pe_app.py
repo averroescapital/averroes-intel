@@ -17,7 +17,7 @@ st.set_page_config(
 )
 
 # --- APP REBOOT TOGGLE ---
-APP_VERSION = "2.0.3 - Live Cache Buster Free Cash Multip"
+APP_VERSION = "2.0.4 - Fix unit formatting (£k vs raw £)"
 
 PROJECT_ID = "averroes-portfolio-intel"
 
@@ -116,28 +116,43 @@ st.markdown("""
 # ============================================================
 # HELPER FUNCTIONS
 # ============================================================
+# ---- UNIT CONVENTIONS ----
+# Gold stores values in two units:
+#   £k  : P&L (revenue, EBITDA, costs, contribution), Balance Sheet (cash, NWC),
+#          Payroll, Capex, Indicative EV
+#   raw £: MRR, ARR, ARPC, Cash (from Financial KPIs), Revenue per Employee,
+#          S&M cost, TCV
+#
+# Formatters:
+#   fmt_gbp_k(val)  — input is in £k, auto-scales to M/k/£
+#   fmt_gbp(val)    — input is in raw £, auto-scales to M/k/£
+
 def fmt_gbp_k(val, decimals=2):
-    """Format value knowing the base unit is already in thousands."""
+    """Format value where input is in £k (thousands).
+    880 (£k) → '£0.88 M', 1474 (£k) → '£1.47 M', 50 (£k) → '£50 k'."""
     if pd.isna(val): return "—"
-    raw_val = val * 1000
+    raw_val = val * 1000                 # convert to raw £
     abs_val = abs(raw_val)
-    if abs_val >= 100_000:
-        return f"£{raw_val / 1_000_000:,.{decimals}f} M"
-    elif abs_val >= 10_000:
-        return f"£{raw_val / 1_000:,.0f} k"
+    sign = "-" if raw_val < 0 else ""
+    if abs_val >= 100_000:               # ≥ £100k → show as M
+        return f"{sign}£{abs_val / 1_000_000:,.{decimals}f} M"
+    elif abs_val >= 1_000:               # ≥ £1k → show as k
+        return f"{sign}£{abs_val / 1_000:,.0f} k"
     else:
-        return f"£{raw_val:,.0f}"
+        return f"{sign}£{abs_val:,.0f}"
 
 def fmt_gbp(val, decimals=2):
-    """Format as full £ value dynamically scaled to M or k."""
+    """Format value where input is in raw £.
+    467135 → '£467 k', 1219 → '£1,219', 46821941 → '£46.82 M'."""
     if pd.isna(val): return "—"
     abs_val = abs(val)
-    if abs_val >= 100_000:
-        return f"£{val / 1_000_000:,.{decimals}f} M"
-    elif abs_val >= 10_000:
-        return f"£{val / 1_000:,.0f} k"
+    sign = "-" if val < 0 else ""
+    if abs_val >= 1_000_000:             # ≥ £1M → show as M
+        return f"{sign}£{abs_val / 1_000_000:,.{decimals}f} M"
+    elif abs_val >= 10_000:              # ≥ £10k → show as k
+        return f"{sign}£{abs_val / 1_000:,.0f} k"
     else:
-        return f"£{val:,.0f}"
+        return f"{sign}£{abs_val:,.0f}"
 
 def fmt_pct(val, decimals=1):
     """Format as percentage."""
@@ -185,10 +200,12 @@ def get_anomalies(row):
     runway = row.get('cash_runway_months')
     if pd.notna(runway) and runway < 12:
         severity = "🔴 CRITICAL" if runway < 6 else "🟡 WARNING"
+        _cb = row.get('cash_balance', 0) or 0
+        _cb_display = f"£{_cb * 1000 / 1_000_000:,.2f}M" if abs(_cb * 1000) >= 100_000 else f"£{_cb:,.0f}k"
         alerts.append({
             "level": severity,
             "metric": "Cash Runway",
-            "message": f"Runway is only {runway:.1f} months. Cash balance £{row.get('cash_balance', 0):,.0f} vs monthly burn.",
+            "message": f"Runway is only {runway:.1f} months. Cash balance {_cb_display} vs monthly burn.",
             "action": "Immediate board trigger. Review liquidity and bridge funding options."
         })
 
@@ -751,7 +768,7 @@ with c3:
 with c4:
     st.metric(
         "Cash Balance",
-        fmt_gbp(row.get('cash_balance')),
+        fmt_gbp_k(row.get('cash_balance')),
     )
 with c5:
     st.metric(
@@ -1016,14 +1033,14 @@ st.markdown('<div class="kpi-section-title">E. Capital Efficiency / Cash / NWC</
 
 e1, e2, e3, e4 = st.columns(4)
 with e1:
-    st.metric("Cash Balance", fmt_gbp(row.get('cash_balance')),
+    st.metric("Cash Balance", fmt_gbp_k(row.get('cash_balance')),
               delta_pct(row.get('cash_balance'), row.get('cash_balance_budget')))
 with e2:
-    st.metric("Cash Burn (Monthly)", fmt_gbp(row.get('cash_burn_monthly')))
+    st.metric("Cash Burn (Monthly)", fmt_gbp_k(row.get('cash_burn_monthly')))
 with e3:
     st.metric("Cash Runway", fmt_months(row.get('cash_runway_months')))
 with e4:
-    st.metric("NWC", fmt_gbp(row.get('net_working_capital')),
+    st.metric("NWC", fmt_gbp_k(row.get('net_working_capital')),
               delta_pct(row.get('net_working_capital'), row.get('nwc_budget')))
 
 e5, e6, e7, e8 = st.columns(4)
@@ -1037,21 +1054,21 @@ with e8:
     _cash_act = row.get('cash_balance')
     _cash_bgt = row.get('cash_balance_budget')
     _cash_var = (_cash_act or 0) - (_cash_bgt or 0) if pd.notna(_cash_act) and pd.notna(_cash_bgt) else None
-    st.metric("Cash vs Budget", fmt_gbp(_cash_var) if pd.notna(_cash_var) else "—")
+    st.metric("Cash vs Budget", fmt_gbp_k(_cash_var) if pd.notna(_cash_var) else "—")
 
 
-# Cash bridge chart — reconciles via: Opening + Net Cash Flow = Closing
-st.markdown("**Cash Bridge**")
-opening_cash = row.get('cash_balance_prior_month', 0) or 0
-closing_cash = row.get('cash_balance', 0) or 0
-ebitda_cf = row.get('ebitda_actual', 0) or 0       # EBITDA in £k
-capex_cf = row.get('capex', 0) or 0                # Capex in £k (negative)
-# Derive "Other" as the residual so the bridge always reconciles
-net_cash_flow = (closing_cash - opening_cash)       # in £ (cash_balance is £)
-other_items = net_cash_flow - (ebitda_cf * 1000) - (capex_cf * 1000)  # residual (WC, financing, etc.)
+# Cash bridge chart — reconciles via: Opening + EBITDA + Capex + Other = Closing
+# All values in £k (same unit as gold table)
+st.markdown("**Cash Bridge (£k)**")
+opening_cash = row.get('cash_balance_prior_month', 0) or 0   # £k
+closing_cash = row.get('cash_balance', 0) or 0               # £k
+ebitda_cf = row.get('ebitda_actual', 0) or 0                 # £k
+capex_cf = row.get('capex', 0) or 0                          # £k (negative)
+# Derive "Other" as the residual so the bridge always reconciles (all £k)
+other_items = (closing_cash - opening_cash) - ebitda_cf - capex_cf
 
 cash_labels = ['Opening Cash', 'EBITDA', 'Capex', 'WC & Financing', 'Closing Cash']
-cash_values = [opening_cash, ebitda_cf * 1000, capex_cf * 1000, other_items, closing_cash]
+cash_values = [opening_cash, ebitda_cf, capex_cf, other_items, closing_cash]
 fig_cash = go.Figure(go.Waterfall(
     name="Cash", orientation="v",
     measure=['absolute', 'relative', 'relative', 'relative', 'total'],
@@ -1062,12 +1079,12 @@ fig_cash = go.Figure(go.Waterfall(
     decreasing={"marker": {"color": "#ef4444"}},
     totals={"marker": {"color": "#0f172a"}},
     textposition="outside",
-    text=[fmt_gbp(v) for v in cash_values]
+    text=[fmt_gbp_k(v) for v in cash_values]
 ))
 fig_cash.update_layout(
     height=350, margin=dict(l=40, r=20, t=20, b=40),
     plot_bgcolor='white', font=dict(family='Inter'),
-    showlegend=False, yaxis_title='£'
+    showlegend=False, yaxis_title='£k'
 )
 st.plotly_chart(fig_cash, use_container_width=True)
 
@@ -1082,10 +1099,10 @@ with p1:
     st.metric("Total Headcount", fmt_num(row.get('total_headcount'), 1),
               delta_pct(row.get('total_headcount'), row.get('headcount_budget')))
 with p2:
-    st.metric("Gross Payroll", fmt_gbp_k(row.get('gross_payroll') / 1000 if pd.notna(row.get('gross_payroll')) else None),
+    st.metric("Gross Payroll", fmt_gbp_k(row.get('gross_payroll')),
               delta_pct(row.get('gross_payroll'), row.get('gross_payroll_budget')))
 with p3:
-    st.metric("Revenue per Employee", fmt_gbp_k(row.get('revenue_per_employee') / 1000 if pd.notna(row.get('revenue_per_employee')) else None))
+    st.metric("Revenue per Employee", fmt_gbp(row.get('revenue_per_employee')))
 with p4:
     st.metric("Payroll % Revenue", fmt_pct(row.get('payroll_pct_revenue')))
 
@@ -1109,7 +1126,7 @@ ytd_data = {
     'Metric': [
         'Revenue (£k)', 'Tech MRR (£)', 'Services MRR (£)',
         'Tech Gross Margin %', 'EBITDA (£k)', 'EBITDA Margin %',
-        'Cash Balance (£)', 'Headcount'
+        'Cash Balance (£k)', 'Headcount'
     ],
     'YTD Actual': [
         row.get('revenue_total_ytd_actual'),
