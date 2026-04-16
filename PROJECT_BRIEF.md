@@ -17,7 +17,7 @@ PE-grade portfolio monitoring platform for Averroes Capital. Ingests monthly Man
 
 ## 2. Current phase
 
-**V2 migration near-complete.** Era-based Python parsers are done (all three eras), dashboard is cut over to `gold.kpi_monthly_v2`, Customer Numbers + Covenant sheets are parsed. Remaining: run backfill (`deploy/migrate_v2.sh`) to populate BQ, verify dashboard against live data, then decommission legacy `gold.kpi_monthly`.
+**V2 migration COMPLETE (2026-04-16).** Era-based Python parsers done (all three eras), dashboard cut over to `gold.kpi_monthly_v2`, Customer Numbers + Covenant sheets parsed. BQ loaded: 2,110 silver rows + 24 gold rows (16 months: 2024-11 → 2026-02). GCS: 16 MA files uploaded to `gs://averroes-portfolio-intel-portfolio-data/portco-alpha/ma-files/`. Cloud Function `portfolio-data-ingest` redeployed (revision 00015, gen2, python311). GitHub pushed. Remaining: decommission legacy `gold.kpi_monthly`, verify Streamlit Community Cloud dashboard at `https://averroes-capital-123.streamlit.app/`.
 
 ---
 
@@ -52,15 +52,22 @@ Currency: GBP. All monetary figures stored in £k unless suffixed otherwise.
 - **gcloud auth:** Run `gcloud auth login` + `gcloud config set project averroes-portfolio-intel` before any deploy/backfill commands
 - **GCS bucket:** `averroes-portfolio-intel-portfolio-data`
 - **Ingest path:** `gs://{bucket}/portco-alpha/ma-files/*.xlsx`
-- **Cloud Function:** `portfolio-data-ingest` (gen2, python311, 512MB, 300s timeout)
+- **Cloud Function:** `portfolio-data-ingest` (gen2, python311, 512MB, 300s timeout, revision 00015)
+  - URL: `https://europe-west2-averroes-portfolio-intel.cloudfunctions.net/portfolio-data-ingest`
+  - Run URL: `https://portfolio-data-ingest-e44q256enq-nw.a.run.app`
   - Triggered by `google.cloud.storage.object.v1.finalized`
   - Entry point: `process_file` in `functions/ingest/`
   - Secret: `gemini_api_key` (from Secret Manager)
+  - Service account: `934700272055-compute@developer.gserviceaccount.com`
 - **Anomaly function:** `portfolio-anomaly-detect` (scheduled, generates alerts + Gemini exec commentary)
 - **BI frontend:** Streamlit Community Cloud (`dashboard/app.py` and `dashboard/pe_app.py`)
+  - Live URL: `https://averroes-capital-123.streamlit.app/`
   - Pages: `1_🤖_AI_Data_Analyst.py`, `2_📊_Era_View.py`
   - Auth: `gcp_service_account` via Streamlit Secrets
   - Resilience: falls back to local `gold_phase1_data.csv` if BQ unreachable
+- **Service account (dashboard/deploy):** `averroes-dashboard-live@averroes-portfolio-intel.iam.gserviceaccount.com`
+  - Key file: `averroes-portfolio-intel-a35a3d912d2c.json`
+  - Roles: `bigquery.admin`, `storage.admin`
 
 ---
 
