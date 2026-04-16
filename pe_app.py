@@ -225,6 +225,91 @@ def get_anomalies(row):
     return alerts
 
 # ============================================================
+# V2 COLUMN HARMONIZATION
+# ============================================================
+
+def harmonize_v2_columns(df):
+    """Map gold.kpi_monthly_v2 columns to legacy names used by pe_app views."""
+    def _safe(col, default=0):
+        return df[col] if col in df.columns else default
+
+    # ARR
+    df["total_arr"] = _safe("tech_arr")
+    df["carr"] = _safe("tech_arr")
+
+    # Services MRR (not in v2 — use zero)
+    df["services_mrr_actual"] = _safe("services_mrr_actual", 0)
+    df["services_mrr_budget"] = 0
+    df["services_mrr_ytd_actual"] = 0
+    df["services_mrr_ytd_budget"] = 0
+
+    # Revenue aliases
+    df["revenue_total_budget"] = _safe("revenue_total_budget")
+    df["revenue_yoy_growth_pct"] = _safe("revenue_yoy_growth_pct")
+
+    # Profitability
+    rev = df["revenue_total_actual"].replace(0, np.nan) if "revenue_total_actual" in df.columns else 1
+    df["ebitda_budget"] = _safe("ebitda_budget")
+    df["ebitda_margin_pct"] = (_safe("ebitda_actual") / rev * 100).fillna(0) if "ebitda_actual" in df.columns else 0
+    df["ebitda_margin_budget_pct"] = (_safe("ebitda_budget") / rev * 100).fillna(0) if "ebitda_budget" in df.columns else 0
+    df["ebitda_margin_prior_pct"] = (_safe("ebitda_prior_year") / rev * 100).fillna(0) if "ebitda_prior_year" in df.columns else 0
+
+    # Contribution
+    df["contribution_margin_pct"] = 0
+    if "contribution_total" in df.columns:
+        df["contribution_margin_pct"] = (_safe("contribution_total") / rev * 100).clip(0, 100).fillna(0)
+
+    # Direct costs
+    dc_ecom = _safe("direct_costs_ecommerce")
+    dc_ems = _safe("direct_costs_ems")
+    dc_services = _safe("direct_costs_services")
+    df["direct_costs_total"] = dc_ecom + dc_ems + dc_services
+
+    # Tech gross margin
+    df["tech_gross_margin_pct"] = _safe("tech_gross_margin_pct")
+    df["tech_gross_margin_budget_pct"] = 0
+    df["tech_gross_margin_prior_pct"] = 0
+
+    # Cash
+    df["cash_balance"] = _safe("cash_balance")
+    ebitda_abs = df["ebitda_actual"].abs().replace(0, np.nan) if "ebitda_actual" in df.columns else 1
+    df["cash_runway_months"] = (_safe("cash_balance") / ebitda_abs).fillna(0) if "cash_balance" in df.columns else 0
+
+    # Capex
+    df["capex"] = 0
+
+    # ARPC
+    df["arpc_actual"] = _safe("arpc_actual")
+    df["arpc_budget"] = 0
+
+    # S&M / other efficiency
+    df["sm_efficiency"] = 0
+
+    # Waterfall (era3 only)
+    for wf_col in ['wf_revenue_start', 'wf_one_off_prev', 'wf_one_off_ytd', 'wf_recurring_growth',
+                    'wf_arr_ytg', 'wf_weighted_pipeline', 'wf_budget_assumptions', 'wf_revenue_gap', 'wf_revenue_end']:
+        if wf_col not in df.columns:
+            df[wf_col] = 0
+
+    # Modules
+    df["modules_live_total"] = _safe("modules_live_total")
+    df["modules_live_ecommerce"] = _safe("modules_live_ecommerce")
+    df["modules_live_ems"] = _safe("modules_live_ems")
+    df["modules_pipeline"] = _safe("modules_pipeline")
+
+    # Headcount
+    df["total_headcount"] = _safe("total_headcount")
+
+    # Covenants
+    df["gl_revenue_actual_cumulative"] = _safe("gr_revenue_actual_ytd")
+    df["gl_revenue_covenant_cumulative"] = _safe("gr_revenue_covenant_ytd")
+    df["gl_ebitda_actual_cumulative"] = _safe("gr_ebitda_capex_actual_ytd")
+    df["gl_ebitda_covenant_cumulative"] = _safe("gr_ebitda_capex_covenant_ytd")
+
+    return df
+
+
+# ============================================================
 # DATA LOADING
 # ============================================================
 
@@ -307,9 +392,9 @@ def load_from_gcs():
 def load_data():
     """
     Data loading priority:
-      1. BigQuery gold.kpi_monthly  (live, single source of truth)
+      1. BigQuery gold.kpi_monthly_v2  (live, single source of truth)
       2. GCS bucket MA files        (parses all MAfile*.xlsx on the fly)
-      3. Local gold_phase1_data.csv (emergency static fallback)
+      3. Local CSV (emergency static fallback)
     """
     # --- 1. BigQuery ---
     try:
@@ -317,7 +402,7 @@ def load_data():
         creds, project = _get_gcp_credentials()
         client = bigquery.Client(project=project, credentials=creds) if creds else bigquery.Client(project=project)
 
-        query = f"SELECT * FROM `{PROJECT_ID}.gold.kpi_monthly` ORDER BY period ASC"
+        query = f"SELECT * FROM `{PROJECT_ID}.gold.kpi_monthly_v2` ORDER BY period ASC"
         df_bq = client.query(query).to_dataframe()
 
         if not df_bq.empty:
@@ -336,7 +421,7 @@ def load_data():
         return df_gcs, gcs_status
 
     # --- 3. Local CSV (emergency only) ---
-    csv_path = os.path.join(os.path.dirname(__file__), "gold_phase1_data.csv")
+    csv_path = os.path.join(os.path.dirname(__file__), "dashboard", "gold_kpi_monthly.csv")
     try:
         df_csv = pd.read_csv(csv_path)
         df_csv['period'] = pd.to_datetime(df_csv['period']).dt.tz_localize(None).dt.normalize()
@@ -349,6 +434,8 @@ def load_data():
 
 
 df_raw, data_status = load_data()
+if not df_raw.empty:
+    df_raw = harmonize_v2_columns(df_raw)
 
 # ============================================================
 # SIDEBAR
@@ -358,7 +445,7 @@ st.sidebar.markdown("Portfolio Intelligence Platform")
 st.sidebar.markdown("---")
 
 if df_raw.empty:
-    st.error("No data available. Check BigQuery connection or gold_phase1_data.csv.")
+    st.error("No data available. Check BigQuery connection.")
     st.stop()
 
 portco_list = sorted(df_raw['portco_id'].unique())
@@ -393,9 +480,9 @@ status_label = {
     "error":            "🔴 No Data",
 }.get(data_status, "⚪ Unknown")
 st.sidebar.caption(f"Data: {status_label}")
-_m = row.get('fy_month_num', 0)
-_m_int = 0 if _m is None or str(_m) in ['<NA>', 'nan', 'None'] else int(_m)
-st.sidebar.caption(f"Period: {row.get('fy', '')} {row.get('fy_quarter', '')} (Month {_m_int})")
+_fy_month = row.get('fy_month_num', 0)
+_fy_month_int = int(_fy_month) if pd.notna(_fy_month) else 0
+st.sidebar.caption(f"Period: {row.get('fy', '')} {row.get('fy_quarter', '')} (Month {_fy_month_int})")
 if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
     st.cache_data.clear()
     st.rerun()

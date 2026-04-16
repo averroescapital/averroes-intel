@@ -92,8 +92,142 @@ st.markdown("""
 # ============================================================
 PROJECT_ID = "averroes-portfolio-intel"
 
+def harmonize_v2_columns(df):
+    """Derive legacy column names from gold.kpi_monthly_v2 so all 7 views
+    continue to work with the new schema.  Operates in-place and returns df."""
+
+    def _safe_col(col, default=0):
+        return df[col] if col in df.columns else default
+
+    # --- Revenue aliases ---
+    df["total_revenue"]        = _safe_col("revenue_total_actual")
+    df["total_revenue_budget"] = _safe_col("revenue_total_budget")
+    df["ecommerce_revenue"]    = _safe_col("revenue_ecommerce_actual")
+    df["ems_revenue"]          = _safe_col("revenue_ems_actual")
+    df["services_revenue"]     = _safe_col("revenue_services_actual")
+    df["tech_revenue"]         = df["ecommerce_revenue"] + df["ems_revenue"]
+
+    rev = df["total_revenue"].replace(0, np.nan)
+    bud = df["total_revenue_budget"].replace(0, np.nan)
+    df["revenue_vs_budget_pct"]      = ((rev / bud) - 1).fillna(0)
+    df["revenue_vs_budget_variance"] = (df["total_revenue"] - df["total_revenue_budget"]).fillna(0)
+    df["total_group_revenue"]        = df["total_revenue"]
+    df["ytd_revenue_growth"]         = _safe_col("revenue_yoy_growth_pct")
+
+    # --- ARR / MRR aliases ---
+    df["tech_arr_live"]        = _safe_col("tech_arr")
+    df["tech_arr_sold"]        = _safe_col("tech_arr")  # no sold concept in v2; same as live
+    df["tech_mrr_live"]        = _safe_col("tech_mrr_actual")
+    df["tech_mrr_sold"]        = _safe_col("tech_mrr_actual")
+    df["ecommerce_arr_live"]   = _safe_col("ecommerce_arr")
+    df["ems_arr_live"]         = _safe_col("ems_arr")
+    if "modules_live_total" in df.columns:
+        live = df["modules_live_total"].replace(0, np.nan)
+        df["revenue_per_live_module"] = (df["total_revenue"] / live).fillna(0)
+    else:
+        df["revenue_per_live_module"] = 0
+
+    # --- Profitability ---
+    dc_ecom     = _safe_col("direct_costs_ecommerce")
+    dc_ems      = _safe_col("direct_costs_ems")
+    dc_services = _safe_col("direct_costs_services")
+    df["direct_costs_total"] = dc_ecom + dc_ems + dc_services
+
+    df["gross_profit_total"]    = df["total_revenue"] - df["direct_costs_total"]
+    df["gross_margin_total_pct"] = (df["gross_profit_total"] / rev * 100).fillna(0)
+
+    df["contribution_total"] = _safe_col("contribution_total")
+    df["contribution_margin_total_pct"] = (df["contribution_total"] / rev * 100).clip(0, 100).fillna(0)
+
+    df["total_overheads"] = _safe_col("total_overheads")
+    df["overhead_ratio"]  = (df["total_overheads"].abs() / rev * 100).fillna(0)
+
+    df["adjusted_ebitda"]        = _safe_col("ebitda_actual")
+    df["adjusted_ebitda_budget"] = _safe_col("ebitda_budget")
+    df["adjusted_ebitda_margin"] = (df["adjusted_ebitda"] / rev * 100).fillna(0)
+    df["ebitda_margin_month"]    = df["adjusted_ebitda_margin"]
+    df["tech_gross_margin_month"] = _safe_col("tech_gross_margin_pct")
+
+    # PAT not in v2; approximate as EBITDA * 0.75
+    df["pat"]        = df["adjusted_ebitda"] * 0.75
+    df["pat_margin"] = (df["pat"] / rev * 100).fillna(0)
+
+    # --- Cash ---
+    df["cash_balance"] = _safe_col("cash_balance")
+    df["cash_burn"]    = _safe_col("cash_burn_monthly")
+    ebitda_abs = df["adjusted_ebitda"].abs().replace(0, np.nan)
+    df["cash_runway_months"] = (df["cash_balance"] / ebitda_abs).fillna(0)
+    df["net_working_capital"] = _safe_col("net_working_capital")
+    df["free_cash_conversion"] = 0  # not in v2; placeholder
+
+    # --- Efficiency ---
+    df["arpc"]             = _safe_col("arpc_actual")
+    df["rule_of_40_score"] = _safe_col("rule_of_40")
+    df["revenue_churn_pct"] = _safe_col("revenue_churn_pct")
+    df["sm_efficiency"]     = 0  # not in v2
+    hc = df["total_headcount"].replace(0, np.nan)
+    df["revenue_per_employee"] = (df["total_revenue"] / hc).fillna(0)
+    df["payroll_pct_revenue"]  = 0  # not in v2
+    df["time_to_value_days"]   = 0  # not in v2
+    df["indicative_ev"]        = df["tech_arr_live"] * 8.5 * 1000
+
+    # --- People ---
+    df["total_headcount"]   = _safe_col("total_headcount")
+    df["headcount_budget"]  = df["total_headcount"]  # no budget in v2
+    df["headcount_variance"] = 0
+
+    # --- Modules ---
+    df["modules_sold_pre_vouchers"]     = _safe_col("modules_live_total")
+    df["modules_live_pre_vouchers"]     = _safe_col("modules_live_total")
+    df["modules_live_ecommerce"]        = _safe_col("modules_live_ecommerce")
+    df["modules_live_ems"]              = _safe_col("modules_live_ems")
+    df["modules_live_services"]         = _safe_col("modules_live_services")
+    df["modules_pipeline"]              = _safe_col("modules_pipeline")
+    df["modules_churn"]                 = 0
+    df["properties_sold"]               = _safe_col("modules_live_total")
+    df["properties_live"]               = _safe_col("modules_live_total")
+
+    # --- Covenants (from Guard Rails + GL Covenants) ---
+    # Map Averroes Guard Rails KPIs to View 7 column names
+    df["gl_revenue_actual_cumulative"]   = _safe_col("gr_revenue_actual_ytd")
+    df["gl_revenue_covenant_cumulative"] = _safe_col("gr_revenue_covenant_ytd")
+    df["gl_ebitda_actual_cumulative"]    = _safe_col("gr_ebitda_capex_actual_ytd")
+    df["gl_ebitda_covenant_cumulative"]  = _safe_col("gr_ebitda_capex_covenant_ytd")
+
+    # Headroom % — derived from ratio columns or recomputed from actuals
+    _rev_ratio = _safe_col("gr_revenue_ratio")
+    _eb_ratio  = _safe_col("gr_ebitda_capex_ratio")
+    # Ratio > 1.0 means actual > covenant → positive headroom
+    # Headroom = (ratio - 1.0) * 100  (as percentage points above/below covenant)
+    df["gl_revenue_headroom_pct"] = _rev_ratio.apply(lambda x: round((x - 1.0) * 100, 2) if x > 0 else 0)
+    df["gl_ebitda_headroom_pct"]  = _eb_ratio.apply(lambda x: round((x - 1.0) * 100, 2) if x > 0 else 0)
+
+    # RAG status: ratio > 1.0 → green, 0.95-1.0 → amber, < 0.95 → red
+    def _rag(ratio_val):
+        if ratio_val >= 1.0:
+            return "green"
+        elif ratio_val >= 0.95:
+            return "amber"
+        elif ratio_val > 0:
+            return "red"
+        return "green"  # no data → default green
+
+    df["averroes_revenue_rag"] = _rev_ratio.apply(_rag)
+    df["averroes_ebitda_rag"]  = _eb_ratio.apply(_rag)
+    df["gl_revenue_breach"]    = _rev_ratio.apply(lambda x: x < 0.95 and x > 0)
+    df["gl_ebitda_breach"]     = _eb_ratio.apply(lambda x: x < 0.95 and x > 0)
+
+    # --- LTM ---
+    df["ltm_revenue_total"]      = df["total_revenue"].rolling(12, min_periods=1).sum()
+    df["ltm_ebitda"]             = df["adjusted_ebitda"].rolling(12, min_periods=1).sum()
+    df["run_rate_revenue_total"] = df["total_revenue"] * 12
+    df["run_rate_ebitda"]        = df["adjusted_ebitda"] * 12
+
+    return df
+
+
 def generate_sample_data():
-    """Generate realistic PE portfolio sample data for testing."""
+    """Generate realistic PE portfolio sample data in v2 schema for testing."""
     np.random.seed(42)
     periods = pd.date_range("2025-04-01", "2026-02-01", freq="MS")
     rows = []
@@ -103,124 +237,90 @@ def generate_sample_data():
         ecomm = base_rev * 0.45 + np.random.normal(0, 5)
         ems = base_rev * 0.30 + np.random.normal(0, 4)
         services = base_rev * 0.25 + np.random.normal(0, 3)
-        direct_costs = base_rev * 0.35 + np.random.normal(0, 4)
-        gp = base_rev - direct_costs
-        contribution = gp * 0.72 + np.random.normal(0, 3)
+        dc_ecom = ecomm * 0.12 + np.random.normal(0, 2)
+        dc_ems = ems * 0.25 + np.random.normal(0, 2)
+        dc_services = services * 0.15 + np.random.normal(0, 1)
+        contrib_ecom = ecomm - dc_ecom - ecomm * 0.3
+        contrib_ems = ems - dc_ems - ems * 0.35
+        contrib_services = services - dc_services - services * 0.6
+        contribution = contrib_ecom + contrib_ems + contrib_services
         overheads = 85 + month_idx * 1.5 + np.random.normal(0, 5)
         ebitda = contribution - overheads
         cash = 1800 - month_idx * 30 + np.random.normal(0, 40)
         headcount = 52 + int(month_idx * 0.8)
-        tech_arr_live = 3200 + month_idx * 85 + np.random.normal(0, 30)
-        tech_arr_sold = tech_arr_live * 1.12
-        mrr_live = tech_arr_live / 12
-        mrr_sold = tech_arr_sold / 12
+        tech_arr = 3200 + month_idx * 85 + np.random.normal(0, 30)
+        mrr = tech_arr / 12
+        ecom_arr = tech_arr * 0.55
+        ems_arr = tech_arr * 0.45
         budget_rev = base_rev * 1.05
         budget_ebitda = ebitda * 1.08
+        mod_ecom = 480 + int(month_idx * 2.5)
+        mod_ems = 410 + int(month_idx * 0.5)
+        mod_serv = 128 + int(month_idx * 2)
+        era = "era1" if p < pd.Timestamp("2025-11-01") else ("era2" if p < pd.Timestamp("2026-01-01") else "era3")
         rows.append({
             "portco_id": "portco-alpha",
             "period": p,
+            "era": era,
             # Revenue
-            "total_revenue": round(base_rev, 1),
-            "total_revenue_budget": round(budget_rev, 1),
-            "total_group_revenue": round(base_rev * 1.02, 1),
+            "revenue_ecommerce_actual": round(ecomm, 1),
+            "revenue_ems_actual": round(ems, 1),
+            "revenue_services_actual": round(services, 1),
+            "revenue_total_actual": round(base_rev, 1),
+            "revenue_total_budget": round(budget_rev, 1),
+            "revenue_yoy_growth_pct": round(10 + month_idx * 0.8, 1),
             "revenue_vs_budget_pct": round((base_rev / budget_rev - 1), 3),
-            "revenue_vs_budget_variance": round(base_rev - budget_rev, 1),
-            "ecommerce_revenue": round(ecomm, 1),
-            "ems_revenue": round(ems, 1),
-            "services_revenue": round(services, 1),
-            "tech_revenue": round(ecomm + ems, 1),
-            "tech1_revenue": round(ecomm * 0.6, 1),
-            "onejourney_revenue": round(ecomm * 0.3, 1),
-            "gifted_revenue": round(ecomm * 0.1, 1),
-            "af_revenue": round(services * 0.5, 1),
             # ARR
-            "tech_mrr_live": round(mrr_live, 1),
-            "tech_mrr_sold": round(mrr_sold, 1),
-            "tech_arr_live": round(tech_arr_live, 1),
-            "tech_arr_sold": round(tech_arr_sold, 1),
-            "ecommerce_arr_live": round(tech_arr_live * 0.55, 1),
-            "ems_arr_live": round(tech_arr_live * 0.45, 1),
-            "revenue_per_live_module": round(np.random.uniform(2.8, 3.5), 2),
-            # Profitability
-            "direct_costs_total": round(direct_costs, 1),
-            "gross_profit_total": round(gp, 1),
-            "gross_margin_total_pct": round(gp / base_rev * 100, 1),
+            "tech_mrr_actual": round(mrr, 1),
+            "tech_arr": round(tech_arr, 1),
+            "ecommerce_arr": round(ecom_arr, 1),
+            "ems_arr": round(ems_arr, 1),
+            # Costs
+            "direct_costs_ecommerce": round(-dc_ecom, 1),
+            "direct_costs_ems": round(-dc_ems, 1),
+            "direct_costs_services": round(-dc_services, 1),
+            "contribution_ecommerce": round(contrib_ecom, 1),
+            "contribution_ems": round(contrib_ems, 1),
+            "contribution_services": round(contrib_services, 1),
             "contribution_total": round(contribution, 1),
-            "contribution_margin_total_pct": min(round(contribution / base_rev * 100, 1), 100),
-            "total_overheads": round(overheads, 1),
-            "overhead_ratio": round(overheads / base_rev * 100, 1),
-            "adjusted_ebitda": round(ebitda, 1),
-            "adjusted_ebitda_budget": round(budget_ebitda, 1),
-            "adjusted_ebitda_margin": round(ebitda / base_rev * 100, 1),
-            "ebitda_margin_month": round(ebitda / base_rev * 100, 1),
-            "tech_gross_margin_month": round((ecomm + ems - direct_costs * 0.6) / (ecomm + ems) * 100, 1),
-            "pat": round(ebitda * 0.75, 1),
-            "pat_margin": round(ebitda * 0.75 / base_rev * 100, 1),
+            "total_overheads": round(-overheads, 1),
+            "ebitda_actual": round(ebitda, 1),
+            "ebitda_budget": round(budget_ebitda, 1),
+            "tech_gross_margin_pct": round((ecomm + ems - (dc_ecom + dc_ems)) / (ecomm + ems) * 100, 1),
             # Cash
             "cash_balance": round(cash, 0),
-            "cash_burn": round(-30 + np.random.normal(0, 10), 1),
-            "cash_runway_months": round(cash / max(abs(ebitda), 1), 1),
+            "cash_burn_monthly": round(-30 + np.random.normal(0, 10), 1),
             "net_working_capital": round(350 + np.random.normal(0, 20), 1),
-            "free_cash_conversion": round(np.random.uniform(0.6, 0.9), 2),
-            # Efficiency
-            "arpc": round(base_rev * 1000 / max(headcount, 1) * 12 / 300, 0),
-            "sm_efficiency": round(np.random.uniform(0.8, 1.4), 2),
-            "revenue_per_employee": round(base_rev / headcount, 1),
-            "payroll_pct_revenue": round(np.random.uniform(38, 48), 1),
-            "rule_of_40_score": round(15 + ebitda / base_rev * 100, 1),
-            "revenue_churn_pct": round(np.random.uniform(1.5, 4.5), 1),
-            "ytd_revenue_growth": round(10 + month_idx * 0.8, 1),
-            "time_to_value_days": round(np.random.uniform(25, 45), 0),
-            "indicative_ev": round(tech_arr_live * 8.5 * 1000, 0),
             # People
             "total_headcount": headcount,
-            "headcount_budget": headcount + 3,
-            "headcount_variance": -3,
-            "ecommerce_headcount": int(headcount * 0.35),
-            "ems_headcount": int(headcount * 0.25),
-            "services_headcount": int(headcount * 0.20),
-            "central_headcount": int(headcount * 0.20),
             # Modules
-            "modules_sold_pre_vouchers": 180 + int(month_idx * 5),
-            "modules_live_pre_vouchers": 160 + int(month_idx * 4),
-            "modules_churn": int(np.random.uniform(1, 4)),
-            "sold_per_month_pre_vouchers": int(np.random.uniform(3, 8)),
-            "live_per_month_pre_vouchers": int(np.random.uniform(2, 6)),
-            "properties_sold": 95 + int(month_idx * 2),
-            "properties_live": 88 + int(month_idx * 1.8),
-            # Covenants
-            "gl_revenue_actual_cumulative": round(sum([420 + i * 8 for i in range(int(month_idx) + 1)]), 1),
-            "gl_revenue_covenant_cumulative": round(sum([400 + i * 7.5 for i in range(int(month_idx) + 1)]), 1),
-            "gl_revenue_headroom_pct": round(np.random.uniform(3, 12), 1),
-            "gl_revenue_breach": False,
-            "gl_ebitda_actual_cumulative": round(sum([(420 + i * 8) * 0.12 for i in range(int(month_idx) + 1)]), 1),
-            "gl_ebitda_covenant_cumulative": round(sum([(400 + i * 7.5) * 0.10 for i in range(int(month_idx) + 1)]), 1),
-            "gl_ebitda_headroom_pct": round(np.random.uniform(5, 18), 1),
-            "gl_ebitda_breach": False,
-            "averroes_revenue_rag": "green" if month_idx < 8 else "amber",
-            "averroes_ebitda_rag": "green",
-            # LTM
-            "ltm_revenue_total": round(base_rev * 12, 1),
-            "ltm_ebitda": round(ebitda * 12, 1),
-            "run_rate_revenue_total": round(base_rev * 12, 1),
-            "run_rate_ebitda": round(ebitda * 12, 1),
+            "modules_live_ecommerce": mod_ecom if era != "era1" else None,
+            "modules_live_ems": mod_ems if era != "era1" else None,
+            "modules_live_services": mod_serv if era != "era1" else None,
+            "modules_live_total": (mod_ecom + mod_ems + mod_serv) if era != "era1" else None,
+            "modules_pipeline": int(np.random.uniform(20, 50)),
+            # Efficiency (Era 3 only)
+            "arpc_actual": round(base_rev * 1000 / max(headcount, 1) * 12 / 300, 0) if era == "era3" else None,
+            "rule_of_40": round(15 + ebitda / base_rev * 100, 1) if era == "era3" else None,
+            "revenue_churn_pct": round(np.random.uniform(1.5, 4.5), 1) if era == "era3" else None,
         })
     return pd.DataFrame(rows)
 
 
 @st.cache_data(ttl=60)
 def load_data():
-    """Try BigQuery first, fall back to sample data."""
+    """Try BigQuery (gold.kpi_monthly_v2) first, fall back to sample data."""
     try:
         from google.cloud import bigquery
         client = bigquery.Client(project=PROJECT_ID)
-        query = f"SELECT * FROM `{PROJECT_ID}.gold.kpi_monthly` ORDER BY period ASC"
+        query = f"SELECT * FROM `{PROJECT_ID}.gold.kpi_monthly_v2` ORDER BY period ASC"
         df = client.query(query).to_dataframe()
         if not df.empty:
-            return df, "bigquery"
+            df["period"] = pd.to_datetime(df["period"]).dt.tz_localize(None).dt.normalize()
+            return harmonize_v2_columns(df), "bigquery"
     except Exception:
         pass
-    return generate_sample_data(), "sample"
+    return harmonize_v2_columns(generate_sample_data()), "sample"
 
 
 df_raw, data_source = load_data()

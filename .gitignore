@@ -41,6 +41,28 @@ Thumbs.db
 # GCP
 .gcloudignore
 
+# Legacy files (removed in v2 cleanup)
+gold_dummy.py
+gold_dummy_data.csv
+gold_phase1_data.csv
+generate_sample_data.py
+dashboard/functions/
+dashboard/gold_dummy.py
+dashboard/capture_live.py
+dashboard/live_screenshot*.png
+deploy/deploy/
+deploy/phase1_parser.py
+deploy/pe_app.py
+deploy/ma_parser.py
+deploy/load_bq_backfill.py
+bq_schemas/phase1_schema.sql
+bq_schemas/schemas.sql
+bq_schemas/alter_add_wf_columns.sql
+bq_schemas/gold_views.sql
+functions/ingest/phase1_parser.py
+functions/ingest/update_csv.py
+dashboard/
+
 # Exceptions — these SHOULD be committed
 !analysis/profile_detail.csv
 !analysis/canonical_schema.json
