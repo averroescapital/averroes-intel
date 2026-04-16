@@ -91,32 +91,67 @@ CREATE TABLE `averroes-portfolio-intel.gold.kpi_monthly_v2` (
   revenue_ems_setup              FLOAT64,
   revenue_ems_hardware           FLOAT64,
 
-  -- Direct contribution
+  -- Direct contribution (actual, budget, PY)
   contribution_ecommerce         FLOAT64,
+  contribution_ecommerce_budget  FLOAT64,
+  contribution_ecommerce_py      FLOAT64,
   contribution_ems               FLOAT64,
+  contribution_ems_budget        FLOAT64,
+  contribution_ems_py            FLOAT64,
   contribution_services          FLOAT64,
+  contribution_services_budget   FLOAT64,
+  contribution_services_py       FLOAT64,
   contribution_total             FLOAT64,
+  contribution_total_budget      FLOAT64,
+  contribution_total_py          FLOAT64,
+  contribution_total_ytd_actual  FLOAT64,
+  contribution_total_ytd_budget  FLOAT64,
 
-  -- Direct costs
+  -- Direct costs (actual + budget)
   direct_costs_ecommerce         FLOAT64,
+  direct_costs_ecommerce_budget  FLOAT64,
   direct_costs_ems               FLOAT64,
+  direct_costs_ems_budget        FLOAT64,
   direct_costs_services          FLOAT64,
+  direct_costs_services_budget   FLOAT64,
 
   -- P&L bottom line
   total_overheads                FLOAT64,
+  total_overheads_budget         FLOAT64,
+  total_overheads_py             FLOAT64,
   ebitda_actual                  FLOAT64,
   ebitda_budget                  FLOAT64,
   ebitda_prior_year              FLOAT64,
   ebitda_less_capex              FLOAT64,
+  ebitda_less_capex_budget       FLOAT64,
+
+  -- YTD from P&L Summary
+  revenue_total_ytd_py           FLOAT64,
+  ebitda_ytd_py                  FLOAT64,
 
   -- Balance sheet
   cash_balance                   FLOAT64,
+  cash_balance_bs_budget         FLOAT64,
+  cash_balance_bs_prior          FLOAT64,
   net_working_capital            FLOAT64,
+  nwc_budget                     FLOAT64,
+  nwc_prior_month                FLOAT64,
   net_debt                       FLOAT64,
   cash_burn_monthly              FLOAT64,
+  capex                          FLOAT64,
+  capex_budget                   FLOAT64,
 
-  -- Headcount
+  -- Headcount (total + segments + payroll)
   total_headcount                FLOAT64,
+  headcount_budget               FLOAT64,
+  headcount_prior_year           FLOAT64,
+  headcount_ecommerce            FLOAT64,
+  headcount_ems                  FLOAT64,
+  headcount_services             FLOAT64,
+  headcount_central              FLOAT64,
+  gross_payroll                  FLOAT64,
+  gross_payroll_budget           FLOAT64,
+  revenue_per_employee           FLOAT64,
 
   -- Modules (Era 2+)
   modules_live_total             FLOAT64,

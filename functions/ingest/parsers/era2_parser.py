@@ -162,20 +162,26 @@ def parse_balance_sheet(wb, period, rows):
     if not sn or period is None:
         return
     ws = wb[sn]
+    # Layout: Col C=Actual, Col D=Budget, Col F=Prior Month
+    # Labels are usually in col B, but some (e.g. NWC at R18) are in col A
     for r in range(1, min(200, ws.max_row) + 1):
-        label = str(ws.cell(r, 2).value or '').strip().lower()
+        label_b = str(ws.cell(r, 2).value or '').strip().lower()
+        label_a = str(ws.cell(r, 1).value or '').strip().lower()
+        label = label_b if label_b else label_a
         if label in {'cash', 'cash at bank', 'cash and cash equivalents'}:
-            v = safe_number(ws.cell(r, 3).value)
-            if v is not None:
-                rows.append(row(period, 'CASH_ON_HAND', v, 'actual', None, sn, ws.cell(r, 3).coordinate))
+            for c, vt in [(3, 'actual'), (4, 'budget'), (6, 'prior_year')]:
+                v = safe_number(ws.cell(r, c).value)
+                if v is not None:
+                    rows.append(row(period, 'CASH_ON_HAND', v, vt, None, sn, ws.cell(r, c).coordinate))
         elif 'net debt' in label:
             v = safe_number(ws.cell(r, 3).value)
             if v is not None:
                 rows.append(row(period, 'NET_DEBT', v, 'actual', None, sn, ws.cell(r, 3).coordinate))
         elif 'working capital' in label and 'net' in label:
-            v = safe_number(ws.cell(r, 3).value)
-            if v is not None:
-                rows.append(row(period, 'NET_WORKING_CAPITAL', v, 'actual', None, sn, ws.cell(r, 3).coordinate))
+            for c, vt in [(3, 'actual'), (4, 'budget'), (6, 'prior_year')]:
+                v = safe_number(ws.cell(r, c).value)
+                if v is not None:
+                    rows.append(row(period, 'NET_WORKING_CAPITAL', v, vt, None, sn, ws.cell(r, c).coordinate))
 
 
 # ---------------------------------------------------------------------------
@@ -253,21 +259,106 @@ def parse_headcount(wb, period, rows):
     if not isinstance(r3c3, (_dt, _d)):
         return  # probably Era 1 wide layout — handled elsewhere
 
+    # --- Headcount section (rows 4-~27): Col C=actual, D=budget, F=PY ---
+    # Stop before "Gross Payroll" section.
+    # Segment accumulators for BL rollup
+    _seg = {'ecommerce': 0, 'ems': 0, 'services': 0, 'operations': 0}
+    _seg_budget = {'ecommerce': 0, 'ems': 0, 'services': 0, 'operations': 0}
+    _seg_py = {'ecommerce': 0, 'ems': 0, 'services': 0, 'operations': 0}
+
     for r in range(4, min(50, ws.max_row) + 1):
+        # Stop if we hit the Payroll section header
+        col_a = str(ws.cell(r, 1).value or '').strip().lower()
+        if 'gross payroll' in col_a:
+            break
+
         team = ws.cell(r, 2).value
         if not team:
+            # Row with no label but values → might be the total row (R27)
+            actual = safe_number(ws.cell(r, 3).value)
+            budget = safe_number(ws.cell(r, 4).value)
+            py = safe_number(ws.cell(r, 6).value)
+            if actual is not None and actual > 20:  # sanity: total HC > 20
+                rows.append(row(period, 'HEADCOUNT_TOTAL', actual, 'actual', None, sn, ws.cell(r, 3).coordinate))
+                if budget is not None:
+                    rows.append(row(period, 'HEADCOUNT_TOTAL', budget, 'budget', None, sn, ws.cell(r, 4).coordinate))
+                if py is not None:
+                    rows.append(row(period, 'HEADCOUNT_TOTAL', py, 'prior_year', None, sn, ws.cell(r, 6).coordinate))
             continue
         team_label = str(team).strip()
         if not team_label:
             continue
-        actual = safe_number(ws.cell(r, 3).value)
-        if team_label.lower() in {'total', 'grand total'}:
+
+        # Classify segment
+        tl = team_label.lower()
+        if tl.startswith('revenue per head'):
+            # Revenue per employee (row 29)
+            v = safe_number(ws.cell(r, 3).value)
+            b = safe_number(ws.cell(r, 4).value)
+            if v is not None:
+                rows.append(row(period, 'REVENUE_PER_EMPLOYEE', v, 'actual', None, sn, ws.cell(r, 3).coordinate))
+            if b is not None:
+                rows.append(row(period, 'REVENUE_PER_EMPLOYEE', b, 'budget', None, sn, ws.cell(r, 4).coordinate))
+            continue
+
+        if tl in {'total', 'grand total'}:
+            actual = safe_number(ws.cell(r, 3).value)
+            budget = safe_number(ws.cell(r, 4).value)
+            py = safe_number(ws.cell(r, 6).value)
             if actual is not None:
                 rows.append(row(period, 'HEADCOUNT_TOTAL', actual, 'actual', None, sn, ws.cell(r, 3).coordinate))
+            if budget is not None:
+                rows.append(row(period, 'HEADCOUNT_TOTAL', budget, 'budget', None, sn, ws.cell(r, 4).coordinate))
+            if py is not None:
+                rows.append(row(period, 'HEADCOUNT_TOTAL', py, 'prior_year', None, sn, ws.cell(r, 6).coordinate))
             continue
+
+        actual = safe_number(ws.cell(r, 3).value)
         if actual is not None:
             key = f"HEADCOUNT_{team_label.upper().replace(' ', '_')}"
             rows.append(row(period, key, actual, 'actual', None, sn, ws.cell(r, 3).coordinate))
+            # Accumulate segments
+            for seg in _seg:
+                if tl.startswith(seg):
+                    _seg[seg] += actual
+                    b = safe_number(ws.cell(r, 4).value)
+                    p = safe_number(ws.cell(r, 6).value)
+                    if b: _seg_budget[seg] += b
+                    if p: _seg_py[seg] += p
+                    break
+
+    # Emit segment totals
+    for seg, val in _seg.items():
+        if val > 0:
+            bl = seg if seg != 'operations' else 'central'
+            rows.append(row(period, f'HEADCOUNT_{bl.upper()}', val, 'actual', bl, sn, ''))
+            if _seg_budget[seg]:
+                rows.append(row(period, f'HEADCOUNT_{bl.upper()}', _seg_budget[seg], 'budget', bl, sn, ''))
+            if _seg_py[seg]:
+                rows.append(row(period, f'HEADCOUNT_{bl.upper()}', _seg_py[seg], 'prior_year', bl, sn, ''))
+
+    # --- Gross Payroll section (rows 31+): Col C=actual £, D=budget £, F=PY £ ---
+    # Find "Gross Payroll" header row
+    for r in range(28, min(60, ws.max_row) + 1):
+        label = str(ws.cell(r, 1).value or '').strip().lower()
+        if 'gross payroll' in label:
+            # Scan payroll rows below header
+            for pr in range(r + 4, min(r + 30, ws.max_row) + 1):
+                plabel = ws.cell(pr, 2).value
+                if not plabel:
+                    # Total row (no label, just values)
+                    pv = safe_number(ws.cell(pr, 3).value)
+                    pb = safe_number(ws.cell(pr, 4).value)
+                    pp = safe_number(ws.cell(pr, 6).value)
+                    if pv is not None and pv > 100000:  # sanity: total payroll > £100k
+                        # Convert £ → £k
+                        rows.append(row(period, 'GROSS_PAYROLL', round(pv / 1000, 5), 'actual', None, sn, ws.cell(pr, 3).coordinate))
+                        if pb is not None:
+                            rows.append(row(period, 'GROSS_PAYROLL', round(pb / 1000, 5), 'budget', None, sn, ws.cell(pr, 4).coordinate))
+                        if pp is not None:
+                            rows.append(row(period, 'GROSS_PAYROLL', round(pp / 1000, 5), 'prior_year', None, sn, ws.cell(pr, 6).coordinate))
+                    break
+            break
 
 
 # ---------------------------------------------------------------------------

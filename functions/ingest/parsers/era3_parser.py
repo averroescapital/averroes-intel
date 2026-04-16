@@ -52,7 +52,7 @@ _FIN_KPI_BLOCKS = {
     'TECH GROSS MARGIN (YTD)':                 'TECH_GROSS_MARGIN_YTD',
     'EBITDA MARGIN (MONTH)':                   'EBITDA_MARGIN',
     'EBITDA MARGIN (YTD)':                     'EBITDA_MARGIN_YTD',
-    'NET WORKING CAPITAL':                     'NET_WORKING_CAPITAL',
+    # NWC: skip — Balance Sheet provides it in £k; Financial KPIs is raw £
     'CASH':                                    'CASH_FIN_KPI',
     'FREE CASH CONVERSION (MONTH)':            'FREE_CASH_CONVERSION',
     'FREE CASH CONVERSION (YTD)':              'FREE_CASH_CONVERSION_YTD',
@@ -264,6 +264,116 @@ def parse_customer_numbers(wb, rows):
         _extract(geo_mapping, 'actual')
 
 
+# ---------------------------------------------------------------------------
+# P&L Summary (Era 3) — extra KPIs not in P&L Detail
+#
+# Layout (Feb 2026):
+#   Col A=Label  B=Actual  C=Budget  D=Variance  E=PY  F=PY Var
+#   Col H=YTD Actual  I=YTD Budget  K=YTD PY
+#   R5-7  : Revenue by BL (ecom/ems/services)
+#   R8    : Total Revenue
+#   R9-11 : Direct & Staff Costs by BL
+#   R12   : Total Direct & Staff Costs
+#   R13-15: Direct Contribution by BL
+#   R16   : Total Direct Contribution
+#   R17   : Total Overheads
+#   R18   : EBITDA
+#   R19   : Capitalised Development (= Capex)
+#   R20   : EBITDA Less Capex
+# Sheet name has trailing space: 'P&L Summary '
+# ---------------------------------------------------------------------------
+_PNL_SUMMARY_MAP = {
+    # (row, kpi, business_line)  —  for contribution by BL, cost by BL
+    13: ('DIRECT_CONTRIBUTION_ECOMMERCE', 'ecommerce'),
+    14: ('DIRECT_CONTRIBUTION_EMS',       'ems'),
+    15: ('DIRECT_CONTRIBUTION_SERVICES',  'services'),
+    16: ('DIRECT_CONTRIBUTION_TOTAL',     'total'),
+    19: ('CAPITALISED_DEV',               None),
+    20: ('EBITDA_LESS_CAPEX',             None),
+}
+
+
+def parse_pnl_summary(wb, period, rows):
+    """Extract budget/PY/YTD data from P&L Summary that P&L Detail doesn't have."""
+    sn = find_sheet(wb, 'P&L Summary')
+    if not sn or period is None:
+        return
+    ws = wb[sn]
+
+    # Contribution: budget (C) and prior_year (E) for BL breakdown
+    for r, (kpi, bl) in _PNL_SUMMARY_MAP.items():
+        for c, vt in [(2, 'actual'), (3, 'budget'), (5, 'prior_year')]:
+            v = safe_number(ws.cell(r, c).value)
+            if v is not None:
+                rows.append(row(period, kpi, v, vt, bl, sn, ws.cell(r, c).coordinate))
+        # YTD actual (col H=8) and YTD budget (col I=9) and YTD PY (col K=11)
+        for c, vt in [(8, 'ytd_actual'), (9, 'ytd_budget'), (11, 'ytd_prior_year')]:
+            v = safe_number(ws.cell(r, c).value)
+            if v is not None:
+                rows.append(row(period, kpi, v, vt, bl, sn, ws.cell(r, c).coordinate))
+
+    # Revenue YTD by BL (rows 5-8)
+    _rev_rows = [
+        (5, 'REVENUE_ECOMMERCE', 'ecommerce'),
+        (6, 'REVENUE_EMS',       'ems'),
+        (7, 'REVENUE_SERVICES',  'services'),
+        (8, 'REVENUE_TOTAL',     'total'),
+    ]
+    for r, kpi, bl in _rev_rows:
+        for c, vt in [(8, 'ytd_actual'), (9, 'ytd_budget'), (11, 'ytd_prior_year')]:
+            v = safe_number(ws.cell(r, c).value)
+            if v is not None:
+                rows.append(row(period, kpi, v, vt, bl, sn, ws.cell(r, c).coordinate))
+
+    # EBITDA YTD (row 18)
+    for c, vt in [(8, 'ytd_actual'), (9, 'ytd_budget'), (11, 'ytd_prior_year')]:
+        v = safe_number(ws.cell(18, c).value)
+        if v is not None:
+            rows.append(row(period, 'EBITDA', v, vt, None, sn, ws.cell(18, c).coordinate))
+
+    # Total Overheads budget/PY (row 17)
+    for c, vt in [(3, 'budget'), (5, 'prior_year')]:
+        v = safe_number(ws.cell(17, c).value)
+        if v is not None:
+            rows.append(row(period, 'TOTAL_OVERHEADS', v, vt, None, sn, ws.cell(17, c).coordinate))
+
+    # NOTE: Rows 9-11 in P&L Summary are "Direct & Staff Costs" (combined),
+    # not just direct costs. P&L Detail already provides the correct split
+    # at rows 9-11 there. Do NOT extract costs from P&L Summary to avoid conflict.
+
+
+# ---------------------------------------------------------------------------
+# Cash Flow (Era 3)
+# Layout:  R6=EBITDA  R18=Capex  R26=Net Cash Flow  R28=Opening  R29=Closing
+# Col C=Actual  Col D=Budget  Col G=YTD
+# ---------------------------------------------------------------------------
+def parse_cash_flow(wb, period, rows):
+    sn = find_sheet(wb, 'Cash Flow')
+    if not sn or period is None:
+        return
+    ws = wb[sn]
+    _cf_map = [
+        (6,  'CF_EBITDA'),
+        (18, 'CAPEX'),
+        (26, 'NET_CASH_FLOW'),
+    ]
+    for r, kpi in _cf_map:
+        for c, vt in [(3, 'actual'), (4, 'budget')]:
+            v = safe_number(ws.cell(r, c).value)
+            if v is not None:
+                rows.append(row(period, kpi, v, vt, None, sn, ws.cell(r, c).coordinate))
+        # YTD (col G=7)
+        v = safe_number(ws.cell(r, 7).value)
+        if v is not None:
+            rows.append(row(period, kpi, v, 'ytd_actual', None, sn, ws.cell(r, 7).coordinate))
+
+    # Cash burn = Net Cash Flow actual (R26 C3)
+    ncf = safe_number(ws.cell(26, 3).value)
+    if ncf is not None:
+        # Cash burn is the negative of net cash flow (positive = burning)
+        rows.append(row(period, 'CASH_BURN', -ncf, 'actual', None, sn, ws.cell(26, 3).coordinate))
+
+
 def parse(wb, file_name=None):
     rows = []
     # Financial KPIs is the authoritative source for Tech MRR in Era 3
@@ -291,6 +401,8 @@ def parse(wb, file_name=None):
     era2_parser.parse_headcount(wb, period, rows)
     era2_parser.parse_gl_covenants(wb, period, rows)
     era2_parser.parse_guard_rails_covenants(wb, period, rows)
+    parse_pnl_summary(wb, period, rows)
+    parse_cash_flow(wb, period, rows)
     parse_revenue_waterfall(wb, period, rows)
     parse_customer_numbers(wb, rows)
     return rows

@@ -286,10 +286,28 @@ def harmonize_v2_columns(df):
         rev_py = df["revenue_total_prior_year"].replace(0, np.nan) if "revenue_total_prior_year" in df.columns else 1
         df["ebitda_margin_prior_pct"] = (_safe("ebitda_prior_year") / rev_py * 100)
 
-    # Contribution
+    # Contribution (with budget/PY variants)
     df["contribution_margin_pct"] = 0
     if "contribution_total" in df.columns:
         df["contribution_margin_pct"] = (_safe("contribution_total") / rev * 100).clip(0, 100).fillna(0)
+    df["contribution_total_budget"] = _safe("contribution_total_budget")
+    df["contribution_total_py"] = _safe("contribution_total_py")
+    if isinstance(rev, pd.Series) and "contribution_total_budget" in df.columns:
+        rev_b = _safe("revenue_total_budget")
+        if isinstance(rev_b, pd.Series):
+            rev_b = rev_b.replace(0, np.nan)
+            df["contribution_margin_budget_pct"] = (_safe("contribution_total_budget") / rev_b * 100).clip(0, 100).fillna(0)
+        else:
+            df["contribution_margin_budget_pct"] = 0
+        rev_py = _safe("revenue_total_prior_year")
+        if isinstance(rev_py, pd.Series):
+            rev_py = rev_py.replace(0, np.nan)
+            df["contribution_margin_prior_pct"] = (_safe("contribution_total_py") / rev_py * 100).clip(0, 100).fillna(0)
+        else:
+            df["contribution_margin_prior_pct"] = 0
+    else:
+        df["contribution_margin_budget_pct"] = 0
+        df["contribution_margin_prior_pct"] = 0
 
     # Direct costs
     dc_ecom = _safe("direct_costs_ecommerce")
@@ -336,8 +354,9 @@ def harmonize_v2_columns(df):
     # NaN runway = not enough data to compute (avoids false CRITICAL alerts)
     df["cash_runway_months"] = (_safe("cash_balance") / burn_abs) if "cash_balance" in df.columns else np.nan
 
-    # Capex
-    df["capex"] = 0
+    # Capex — from Cash Flow sheet (era3) or P&L Summary
+    df["capex"] = _safe("capex")
+    df["capex_budget"] = _safe("capex_budget")
 
     # ARPC
     df["arpc_actual"] = _safe("arpc_actual")
@@ -381,8 +400,37 @@ def harmonize_v2_columns(df):
     df["modules_live_ems"] = _safe("modules_live_ems")
     df["modules_pipeline"] = _safe("modules_pipeline")
 
-    # Headcount
+    # Headcount — total + segments + payroll
     df["total_headcount"] = _safe("total_headcount")
+    df["headcount_budget"] = _safe("headcount_budget")
+    df["headcount_prior_year"] = _safe("headcount_prior_year")
+    df["headcount_ecommerce"] = _safe("headcount_ecommerce")
+    df["headcount_ems"] = _safe("headcount_ems")
+    df["headcount_services"] = _safe("headcount_services")
+    df["headcount_central"] = _safe("headcount_central")
+    df["gross_payroll"] = _safe("gross_payroll")
+    df["gross_payroll_budget"] = _safe("gross_payroll_budget")
+    df["revenue_per_employee"] = _safe("revenue_per_employee")
+    # Payroll as % of revenue
+    if "gross_payroll" in df.columns and isinstance(rev, pd.Series):
+        df["payroll_pct_revenue"] = (_safe("gross_payroll") / rev * 100).fillna(0)
+    else:
+        df["payroll_pct_revenue"] = 0
+
+    # NWC
+    df["nwc_budget"] = _safe("nwc_budget")
+    df["nwc_prior_month"] = _safe("nwc_prior_month")
+
+    # Overheads budget
+    df["total_overheads_budget"] = _safe("total_overheads_budget")
+
+    # EBITDA less capex
+    df["ebitda_less_capex"] = _safe("ebitda_less_capex")
+    df["ebitda_less_capex_budget"] = _safe("ebitda_less_capex_budget")
+
+    # YTD PY
+    df["revenue_total_ytd_py"] = _safe("revenue_total_ytd_py")
+    df["ebitda_ytd_py"] = _safe("ebitda_ytd_py")
 
     # Covenants
     df["gl_revenue_actual_cumulative"] = _safe("gr_revenue_actual_ytd")
@@ -1000,23 +1048,23 @@ ytd_data = {
     ],
     'YTD Budget': [
         row.get('revenue_total_ytd_budget'),
-        row.get('tech_mrr_ytd_actual'),  # no ytd budget variant yet
+        row.get('tech_mrr_budget'),           # use budget MRR (no separate YTD budget)
         row.get('services_mrr_ytd_budget'),
         row.get('tech_gross_margin_ytd_budget_pct'),
         row.get('ebitda_ytd_budget'),
         row.get('ebitda_margin_ytd_budget_pct'),
         row.get('cash_balance_budget'),
-        None
+        row.get('headcount_budget')
     ],
     'YTD Prior Year': [
-        row.get('revenue_total_prior_year'),  # monthly PY as proxy
+        row.get('revenue_total_ytd_py'),      # real YTD PY from P&L Summary
         row.get('tech_mrr_prior_year'),
         row.get('services_mrr_prior_year'),
         row.get('tech_gross_margin_prior_pct'),
-        row.get('ebitda_prior_year'),
+        row.get('ebitda_ytd_py'),             # real YTD PY EBITDA
         row.get('ebitda_margin_prior_pct'),
         row.get('cash_balance_prior_month'),
-        None
+        row.get('headcount_prior_year')
     ]
 }
 
