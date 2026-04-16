@@ -18,13 +18,18 @@ from parsers.alpha_parser import parse_alpha_ma  # noqa: E402
 from silver_gold_v2 import build_silver_from_parsed, pivot_to_gold  # noqa: E402
 
 
-UPLOADS_DIR = "/sessions/dazzling-upbeat-hopper/mnt/uploads"
-OUTPUT_DIR  = "/sessions/dazzling-upbeat-hopper/mnt/averroes-portfolio-intel/dashboard"
+# Where to find MA files: env var > ./raw_ma_files/ > repo root
+REPO_ROOT   = os.path.abspath(os.path.join(HERE, "..", ".."))
+MA_DIR      = os.environ.get("MA_FILES_DIR", os.path.join(REPO_ROOT, "raw_ma_files"))
+OUTPUT_DIR  = os.environ.get("OUTPUT_DIR", os.path.join(REPO_ROOT, "dashboard"))
 PORTCO_ID   = "portco-alpha"
 
 
 def load_all_files():
-    patterns = [os.path.join(UPLOADS_DIR, "*Management Accounts*.xlsx")]
+    patterns = [
+        os.path.join(MA_DIR, "*.xlsx"),
+        os.path.join(MA_DIR, "*Management Accounts*.xlsx"),
+    ]
     files = []
     for p in patterns:
         files.extend(glob.glob(p))

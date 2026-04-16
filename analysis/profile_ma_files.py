@@ -12,8 +12,9 @@ import openpyxl
 from datetime import datetime, date
 from collections import OrderedDict
 
-UPLOADS_DIR = "/sessions/dazzling-upbeat-hopper/mnt/uploads"
-OUT_DIR = "/sessions/dazzling-upbeat-hopper"
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+UPLOADS_DIR = os.environ.get("MA_FILES_DIR", os.path.join(REPO_ROOT, "raw_ma_files"))
+OUT_DIR = os.path.dirname(__file__)
 
 # Chronological order (oldest -> newest). Canonical = last entry.
 FILES = [
