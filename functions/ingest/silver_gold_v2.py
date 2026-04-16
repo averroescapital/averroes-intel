@@ -245,6 +245,8 @@ def pivot_to_gold(silver: pd.DataFrame, portco_id: str = "portco-alpha") -> pd.D
 
             # YTD from P&L Summary (era3)
             "revenue_total_ytd_py":          pick("REVENUE_TOTAL", "ytd_prior_year", "total"),
+            "ebitda_ytd_actual":             pick("EBITDA", "ytd_actual"),
+            "ebitda_ytd_budget":             pick("EBITDA", "ytd_budget"),
             "ebitda_ytd_py":                 pick("EBITDA", "ytd_prior_year"),
             "contribution_total_ytd_actual": pick("DIRECT_CONTRIBUTION_TOTAL", "ytd_actual", "total"),
             "contribution_total_ytd_budget": pick("DIRECT_CONTRIBUTION_TOTAL", "ytd_budget", "total"),
@@ -373,13 +375,18 @@ def pivot_to_gold(silver: pd.DataFrame, portco_id: str = "portco-alpha") -> pd.D
     gold["period"] = pd.to_datetime(gold["period"]).dt.normalize()
     gold = gold.sort_values("period").reset_index(drop=True)
 
-    # Compute cumulative YTD fields within each FY
+    # Compute cumulative YTD fields within each FY (fallback if P&L Summary didn't provide)
     if not gold.empty and "fy" in gold.columns:
         for col_actual, col_ytd in [
             ("ebitda_actual", "ebitda_ytd_actual"),
             ("ebitda_budget", "ebitda_ytd_budget"),
         ]:
             if col_actual in gold.columns:
-                gold[col_ytd] = gold.groupby("fy")[col_actual].cumsum()
+                cumulative = gold.groupby("fy")[col_actual].cumsum()
+                # Only fill where P&L Summary didn't already provide the value
+                if col_ytd in gold.columns:
+                    gold[col_ytd] = gold[col_ytd].fillna(cumulative)
+                else:
+                    gold[col_ytd] = cumulative
 
     return gold

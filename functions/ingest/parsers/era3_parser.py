@@ -306,8 +306,9 @@ def parse_pnl_summary(wb, period, rows):
             v = safe_number(ws.cell(r, c).value)
             if v is not None:
                 rows.append(row(period, kpi, v, vt, bl, sn, ws.cell(r, c).coordinate))
-        # YTD actual (col H=8) and YTD budget (col I=9) and YTD PY (col K=11)
-        for c, vt in [(8, 'ytd_actual'), (9, 'ytd_budget'), (11, 'ytd_prior_year')]:
+        # YTD actual (col G=7) and YTD budget (col H=8) and YTD PY (col J=10)
+        # Note: col I=9 is YTD Budget Variance, col K=11 is YTD PY Variance
+        for c, vt in [(7, 'ytd_actual'), (8, 'ytd_budget'), (10, 'ytd_prior_year')]:
             v = safe_number(ws.cell(r, c).value)
             if v is not None:
                 rows.append(row(period, kpi, v, vt, bl, sn, ws.cell(r, c).coordinate))
@@ -320,13 +321,13 @@ def parse_pnl_summary(wb, period, rows):
         (8, 'REVENUE_TOTAL',     'total'),
     ]
     for r, kpi, bl in _rev_rows:
-        for c, vt in [(8, 'ytd_actual'), (9, 'ytd_budget'), (11, 'ytd_prior_year')]:
+        for c, vt in [(7, 'ytd_actual'), (8, 'ytd_budget'), (10, 'ytd_prior_year')]:
             v = safe_number(ws.cell(r, c).value)
             if v is not None:
                 rows.append(row(period, kpi, v, vt, bl, sn, ws.cell(r, c).coordinate))
 
     # EBITDA YTD (row 18)
-    for c, vt in [(8, 'ytd_actual'), (9, 'ytd_budget'), (11, 'ytd_prior_year')]:
+    for c, vt in [(7, 'ytd_actual'), (8, 'ytd_budget'), (10, 'ytd_prior_year')]:
         v = safe_number(ws.cell(18, c).value)
         if v is not None:
             rows.append(row(period, 'EBITDA', v, vt, None, sn, ws.cell(18, c).coordinate))

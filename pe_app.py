@@ -251,7 +251,7 @@ def harmonize_v2_columns(df):
     df["services_mrr_budget"] = _safe("services_mrr_budget")
     df["services_mrr_prior_year"] = _safe("services_mrr_prior_year")
     df["services_mrr_ytd_actual"] = _safe("services_mrr_ytd_actual")
-    df["services_mrr_ytd_budget"] = 0  # not yet available in source
+    df["services_mrr_ytd_budget"] = _safe("services_mrr_ytd_budget")
 
     # Services ARR
     df["services_arr"] = _safe("services_arr")
@@ -394,11 +394,17 @@ def harmonize_v2_columns(df):
         else:
             df[wf_col] = df[wf_col].fillna(0)
 
-    # Modules
+    # Modules / Properties
     df["modules_live_total"] = _safe("modules_live_total")
     df["modules_live_ecommerce"] = _safe("modules_live_ecommerce")
     df["modules_live_ems"] = _safe("modules_live_ems")
+    df["modules_live_services"] = _safe("modules_live_services")
     df["modules_pipeline"] = _safe("modules_pipeline")
+    # Map to display names used in dashboard
+    df["properties_live"] = df["modules_live_total"]
+    df["properties_ecommerce"] = df["modules_live_ecommerce"]
+    df["properties_ems"] = df["modules_live_ems"]
+    df["properties_services"] = df["modules_live_services"]
 
     # Headcount — total + segments + payroll
     df["total_headcount"] = _safe("total_headcount")
