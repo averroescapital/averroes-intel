@@ -227,6 +227,32 @@ def pivot_to_gold(silver: pd.DataFrame, portco_id: str = "portco-alpha") -> pd.D
             "rule_of_40":            pick("RULE_OF_40", "actual"),
             "revenue_churn_pct":     pick("REVENUE_CHURN", "actual"),
 
+            # GL Covenants (Era 2+)
+            "gl_arr_actual":           pick("GL_ARR_ACTUAL", "actual"),
+            "gl_arr_covenant":         pick("GL_ARR_COVENANT", "actual"),
+            "gl_arr_ratio":            pick("GL_ARR_RATIO", "actual"),
+            "gl_arr_threshold":        pick("GL_ARR_THRESHOLD", "actual"),
+            "gl_interest_cover_ratio": pick("GL_INTEREST_COVER_RATIO", "actual"),
+            "gl_debt_service_ratio":   pick("GL_DEBT_SERVICE_RATIO", "actual"),
+            "gl_cash_min_balance":     pick("GL_CASH_MIN_BALANCE", "actual"),
+
+            # Averroes Guard Rails (Era 2+)
+            "gr_revenue_actual_ytd":        pick("GR_REVENUE_ACTUAL_YTD", "actual"),
+            "gr_revenue_covenant_ytd":      pick("GR_REVENUE_COVENANT_YTD", "actual"),
+            "gr_revenue_ratio":             pick("GR_REVENUE_RATIO", "actual"),
+            "gr_mrr_actual":                pick("GR_MRR_ACTUAL", "actual"),
+            "gr_mrr_covenant":              pick("GR_MRR_COVENANT", "actual"),
+            "gr_mrr_ratio":                 pick("GR_MRR_RATIO", "actual"),
+            "gr_contribution_actual_ytd":   pick("GR_CONTRIBUTION_ACTUAL_YTD", "actual"),
+            "gr_contribution_covenant_ytd": pick("GR_CONTRIBUTION_COVENANT_YTD", "actual"),
+            "gr_contribution_ratio":        pick("GR_CONTRIBUTION_RATIO", "actual"),
+            "gr_ebitda_capex_actual_ytd":   pick("GR_EBITDA_CAPEX_ACTUAL_YTD", "actual"),
+            "gr_ebitda_capex_covenant_ytd": pick("GR_EBITDA_CAPEX_COVENANT_YTD", "actual"),
+            "gr_ebitda_capex_ratio":        pick("GR_EBITDA_CAPEX_RATIO", "actual"),
+            "gr_cash_actual":               pick("GR_CASH_ACTUAL", "actual"),
+            "gr_cash_covenant":             pick("GR_CASH_COVENANT", "actual"),
+            "gr_cash_ratio":                pick("GR_CASH_RATIO", "actual"),
+
             "currency":    "GBP",
             "data_source": f"ma_parser:{era}",
             "era":         era,
