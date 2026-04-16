@@ -49,12 +49,19 @@ CREATE TABLE `averroes-portfolio-intel.gold.kpi_monthly_v2` (
   tech_mrr_prior_year            FLOAT64,
   tech_mrr_ytd_actual            FLOAT64,
 
+  -- Services MRR (from Financial KPIs, £k)
+  services_mrr_actual            FLOAT64,
+  services_mrr_budget            FLOAT64,
+  services_mrr_prior_year        FLOAT64,
+  services_mrr_ytd_actual        FLOAT64,
+
   -- Business-line MRR/ARR (derived)
   ecommerce_mrr_actual           FLOAT64,
   ems_mrr_actual                 FLOAT64,
   tech_arr                       FLOAT64,
   ecommerce_arr                  FLOAT64,
   ems_arr                        FLOAT64,
+  services_arr                   FLOAT64,
 
   -- Revenues by business line (actual, budget, PY) in £k
   revenue_ecommerce_actual       FLOAT64,
@@ -118,11 +125,55 @@ CREATE TABLE `averroes-portfolio-intel.gold.kpi_monthly_v2` (
   modules_live_services          FLOAT64,
   modules_pipeline               FLOAT64,
 
+  -- EBITDA YTD (cumulative within FY)
+  ebitda_ytd_actual              FLOAT64,
+  ebitda_ytd_budget              FLOAT64,
+
   -- Financial KPIs (Era 3)
   arpc_actual                    FLOAT64,
+  arpc_budget                    FLOAT64,
+  arpc_ytd_actual                FLOAT64,
+  arpc_ytd_budget                FLOAT64,
+
   tech_gross_margin_pct          FLOAT64,
+  tech_gross_margin_budget_pct   FLOAT64,
+  tech_gross_margin_prior_pct    FLOAT64,
+  tech_gross_margin_ytd_pct      FLOAT64,
+  tech_gross_margin_ytd_budget_pct FLOAT64,
+
+  ebitda_margin_pct              FLOAT64,
+  ebitda_margin_budget_pct       FLOAT64,
+  ebitda_margin_prior_pct        FLOAT64,
+  ebitda_margin_ytd_pct          FLOAT64,
+  ebitda_margin_ytd_budget_pct   FLOAT64,
+
+  cash_balance_budget            FLOAT64,
+  cash_balance_prior_month       FLOAT64,
+
+  free_cash_conversion_month     FLOAT64,
+  free_cash_conversion_budget    FLOAT64,
+  free_cash_conversion_ytd       FLOAT64,
+
+  indicative_ev                  FLOAT64,
+  sm_efficiency                  FLOAT64,
+  ytd_revenue_growth_pct         FLOAT64,
+  ytd_revenue_growth_budget      FLOAT64,
+  time_to_value_days             FLOAT64,
+
   rule_of_40                     FLOAT64,
   revenue_churn_pct              FLOAT64,
+  revenue_churn_target           FLOAT64,
+
+  -- Revenue Waterfall (Era 3)
+  wf_revenue_start               FLOAT64,
+  wf_one_off_prev                FLOAT64,
+  wf_one_off_ytd                 FLOAT64,
+  wf_recurring_growth            FLOAT64,
+  wf_arr_ytg                     FLOAT64,
+  wf_weighted_pipeline           FLOAT64,
+  wf_budget_assumptions          FLOAT64,
+  wf_revenue_gap                 FLOAT64,
+  wf_revenue_end                 FLOAT64,
 
   -- GL Covenants (Era 2+)
   gl_arr_actual                  FLOAT64,
