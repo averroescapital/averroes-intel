@@ -46,6 +46,7 @@ Currency: GBP. All monetary figures stored in £k unless suffixed otherwise.
 
 - **GitHub:** `github.com/averroescapital/averroes-intel` (public repo, 34+ commits)
 - **GitHub org:** `averroescapital`
+- **Local path (Ishu's Mac):** `/Users/ishuratna/.gemini/antigravity/scratch/averroes-portfolio-intel`
 - **GCP project:** `averroes-portfolio-intel`
 - **Region:** `europe-west2`
 - **gcloud auth:** Run `gcloud auth login` + `gcloud config set project averroes-portfolio-intel` before any deploy/backfill commands
