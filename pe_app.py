@@ -632,6 +632,33 @@ if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
     st.cache_data.clear()
     st.rerun()
 
+# PDF Download — triggers browser print dialog (Save as PDF)
+st.sidebar.markdown(
+    """
+    <style>
+    .pdf-btn {
+        display: block;
+        width: 100%;
+        padding: 0.5rem 1rem;
+        margin-top: 0.5rem;
+        background-color: #0f172a;
+        color: #ffffff !important;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-align: center;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    .pdf-btn:hover { background-color: #1e293b; }
+    @media print { .pdf-btn { display: none !important; } }
+    </style>
+    <button class="pdf-btn" onclick="window.print()">📄 Download as PDF</button>
+    """,
+    unsafe_allow_html=True,
+)
+
 # ============================================================
 # HEADER
 # ============================================================
