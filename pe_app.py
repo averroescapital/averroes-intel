@@ -685,6 +685,35 @@ if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
     st.cache_data.clear()
     st.rerun()
 
+if st.sidebar.button("⚙️ Reprocess GCS Files", use_container_width=True,
+                     help="Re-upload files on GCS to trigger the Cloud Function"):
+    _reprocess_status = st.sidebar.empty()
+    try:
+        from google.cloud import storage as _gcs
+        from google.oauth2 import service_account as _sa
+        _creds = None
+        if "gcp_service_account" in st.secrets:
+            _creds = _sa.Credentials.from_service_account_info(
+                st.secrets["gcp_service_account"])
+        _client = _gcs.Client(project=PROJECT_ID, credentials=_creds) \
+            if _creds else _gcs.Client(project=PROJECT_ID)
+        _bucket = _client.bucket(f"{PROJECT_ID}-portfolio-data")
+        _prefix = "portco-alpha/ma-files/"
+        _blobs = list(_bucket.list_blobs(prefix=_prefix))
+        _xlsx = [b for b in _blobs if b.name.lower().endswith(".xlsx")
+                 and not b.name.split("/")[-1].startswith("~$")]
+        if not _xlsx:
+            _reprocess_status.warning("No .xlsx files found on GCS.")
+        else:
+            _reprocess_status.info(f"Re-triggering {len(_xlsx)} files...")
+            for _b in _xlsx:
+                _bucket.copy_blob(_b, _bucket, _b.name)
+            _reprocess_status.success(
+                f"Re-triggered {len(_xlsx)} files. Data will refresh in ~1-2 min. "
+                f"Hit **Refresh Data** after that.")
+    except Exception as _e:
+        _reprocess_status.error(f"GCS error: {_e}")
+
 # PDF Download — triggers browser print dialog (Save as PDF)
 st.sidebar.markdown(
     """

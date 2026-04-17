@@ -67,6 +67,46 @@ def load_v2():
 
 
 df, source = load_v2()
+
+# ---- Sidebar: Refresh + Reprocess ----
+st.sidebar.markdown("### Data Controls")
+st.sidebar.caption(f"Source: **{source}**")
+if st.sidebar.button("🔄 Refresh Data", use_container_width=True,
+                     help="Clear cache and re-query BigQuery"):
+    st.cache_data.clear()
+    st.rerun()
+
+if st.sidebar.button("⚙️ Reprocess GCS Files", use_container_width=True,
+                     help="Re-upload files on GCS to trigger the Cloud Function"):
+    _reprocess_status = st.sidebar.empty()
+    try:
+        from google.cloud import storage as _gcs
+        from google.oauth2 import service_account as _sa
+        _creds = None
+        if "gcp_service_account" in st.secrets:
+            _creds = _sa.Credentials.from_service_account_info(
+                st.secrets["gcp_service_account"])
+        _client = _gcs.Client(project=PROJECT_ID, credentials=_creds) \
+            if _creds else _gcs.Client(project=PROJECT_ID)
+        _bucket = _client.bucket(f"{PROJECT_ID}-portfolio-data")
+        _prefix = f"{PORTCO_ID}/ma-files/"
+        _blobs = list(_bucket.list_blobs(prefix=_prefix))
+        _xlsx = [b for b in _blobs if b.name.lower().endswith(".xlsx")
+                 and not b.name.split("/")[-1].startswith("~$")]
+        if not _xlsx:
+            _reprocess_status.warning("No .xlsx files found on GCS.")
+        else:
+            _reprocess_status.info(f"Re-triggering {len(_xlsx)} files...")
+            for _b in _xlsx:
+                _bucket.copy_blob(_b, _bucket, _b.name)
+            _reprocess_status.success(
+                f"Re-triggered {len(_xlsx)} files. Data will refresh in ~1-2 min. "
+                f"Hit **Refresh Data** after that.")
+    except Exception as _e:
+        _reprocess_status.error(f"GCS error: {_e}")
+
+st.sidebar.markdown("---")
+
 if df.empty:
     st.error("No data found in gold.kpi_monthly_v2.")
     st.stop()
