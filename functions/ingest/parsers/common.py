@@ -50,7 +50,7 @@ def period_from_filename(file_name):
         'december':12,'dec':12,
     }
     # match "<month> <yy>" where yy = 2-digit year
-    m = re.search(r'(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\s*[- ]?\s*(\d{2})\b', name)
+    m = re.search(r'(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\s*[- ]?\s*(\d{2})\b', name)
     if m:
         mo = months[m.group(1)]
         yr = 2000 + int(m.group(2))

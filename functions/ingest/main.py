@@ -42,22 +42,36 @@ def process_file(cloud_event):
         return
     portco_id = parts[0]
 
-    # Only process MA files for now
     basename = os.path.basename(file_name)
-    if "Management Accounts" not in basename and "MAfile" not in basename:
-        print(f"[ingest] skipping non-MA file: {basename}")
+
+    # Only process Excel files
+    if not basename.lower().endswith((".xlsx", ".xls", ".xlsm")):
+        print(f"[ingest] skipping non-Excel file: {basename}")
+        return
+
+    # Skip temp/hidden files (Excel lock files, macOS resource forks)
+    if basename.startswith(("~$", ".")):
+        print(f"[ingest] skipping temp/hidden file: {basename}")
         return
 
     blob = storage_client.bucket(bucket_name).blob(file_name)
     file_bytes = blob.download_as_bytes()
+    print(f"[ingest] downloaded {len(file_bytes):,} bytes from gs://{bucket_name}/{file_name}")
 
     # --- 1. Parse ---
-    parsed_rows = parse_alpha_ma(file_bytes, basename)
+    try:
+        parsed_rows = parse_alpha_ma(file_bytes, basename)
+    except Exception as e:
+        print(f"[ingest] ERROR parsing {basename}: {e.__class__.__name__}: {e}")
+        import traceback; traceback.print_exc()
+        return
+
     if not parsed_rows:
-        print(f"[ingest] parser returned no rows for {basename}")
+        print(f"[ingest] parser returned no rows for {basename} — file may have an unrecognised layout")
         return
     era = parsed_rows[0].get("era", "unknown")
-    print(f"[ingest] parsed {len(parsed_rows)} rows (era={era})")
+    periods = sorted(set(r.get("period", "?") for r in parsed_rows))
+    print(f"[ingest] parsed {len(parsed_rows)} rows (era={era}, periods={periods})")
 
     # --- 2. Bronze ---
     write_bronze(parsed_rows, portco_id, basename)
