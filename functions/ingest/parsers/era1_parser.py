@@ -1,43 +1,52 @@
 """
-Era 1 parser: Nov 2024 - Oct 2025 (LEGACY format)
+Era 1 parser: covers FY24 (Nov 2023 – Oct 2024) AND FY25 (Nov 2024 – Oct 2025)
 
-Sheet layout available:
-  - 'Summary '  (trailing space!)    -> business-line revenue, direct contrib, Tech MRR, Cash
+Both fiscal years share the 'Summary ' sheet format but with layout drift:
+
+  FY24 early (Nov 23 – ~May 24):  compact — no EBITDA Less Capex row,
+      Tech MRR / Cash / NWC / Net Debt / Cash Burn start at R20.
+      Col 10 = Variance (£), NOT Prior Year.
+
+  FY24 late  (Jun 24 – Oct 24):   extended — Capitalised Development + EBITDA Less
+      Capex rows inserted, Tech MRR at R28, balance sheet at R29+.
+      Col 10 = Variance (£), NOT Prior Year.
+
+  FY25       (Nov 24 – Oct 25):   same extended layout but adds LTM Tech MRR row
+      between Tech MRR and Cash. Col 10 = Prior Year.
+
+Strategy: P&L section (R5-R18) is stable across all layouts → hardcoded.
+Bottom section (EBITDA Less Capex, Tech MRR, Cash, etc.) → label-scanned.
+Prior-year column → detected from R3 header text.
+
+Sheet layout:
+  - 'Summary '  (trailing space!)    -> BL revenue, direct contrib, Tech MRR, Cash
   - 'Ecommerce P&L'                  -> Success/SetUp/Payment fees breakdown
-  - 'EMS P&L'                        -> Subscription breakdown (Spa/Salon/Salonlite/College)
+  - 'EMS P&L'                        -> Subscription breakdown
   - 'Services P&L'                   -> revenue breakdown
   - 'Headcount'                      -> wide format (teams x month columns)
-  - 'P&L Summary'                    -> month-level P&L (without business-line split)
-
-Missing: P&L Detail, Financial KPIs, Balance Sheet (consolidated), Revenue Waterfall
-
-The 'Summary ' sheet is the richest single source for this era:
-  R 2 col B: period (end-of-month date)
-  R 5-R 7  : Ecommerce / EMS / Services revenue (actual / budget / variance / % / YTD-actual / YTD-budget / ... / PY / PY-variance / PY-variance% / YE-budget-var / YE-budget-var%)
-  R 8      : Total Revenue
-  R 9-R11  : Direct costs by business line (negative)
-  R12      : Total Direct & Staff Costs
-  R13-R15  : Direct Contribution by business line
-  R28      : Tech MRR (Actual / Budget / Variance / %)
-  R29      : LTM Tech MRR
-  R30      : Cash on hand
-  R31      : Net Working Capital
-  R32      : Net Debt
-  R33      : Cash Burn
+  - 'P&L Summary'                    -> month-level P&L (without BL split)
 """
 from .common import find_sheet, safe_number, parse_date, period_from_filename, row
 
 
-# Column layout in 'Summary ' sheet (confirmed Nov-2024 + Apr-2025 + Oct-2025)
+# Column layout in 'Summary ' sheet — stable across FY24 & FY25
 SUMMARY_COL_ACTUAL      = 2
 SUMMARY_COL_BUDGET      = 3
 SUMMARY_COL_YTD_ACTUAL  = 6
 SUMMARY_COL_YTD_BUDGET  = 7
-SUMMARY_COL_PRIOR_YEAR  = 10
+SUMMARY_COL_PRIOR_YEAR  = 10  # only valid if header confirms it
 
 
-def _emit(rows, period, kpi, sheet, ws, r, business_line=None, skip_ytd=False, skip_py=False):
-    """Helper that emits actual/budget/YTD/prior-year rows from a 'Summary ' layout row."""
+def _has_prior_year_column(ws):
+    """Check R3 C10 header to see if col 10 is Prior Year or Variance."""
+    header = str(ws.cell(3, SUMMARY_COL_PRIOR_YEAR).value or '').strip().lower()
+    # FY25 files have 'PY' or 'Prior Year'; FY24 files have 'Variance'
+    return 'prior' in header or header == 'py'
+
+
+def _emit(rows, period, kpi, sheet, ws, r, business_line=None,
+          skip_ytd=False, skip_py=False):
+    """Emit actual/budget/YTD/prior-year rows from a 'Summary ' layout row."""
     actual = safe_number(ws.cell(r, SUMMARY_COL_ACTUAL).value)
     budget = safe_number(ws.cell(r, SUMMARY_COL_BUDGET).value)
     ytd_a  = safe_number(ws.cell(r, SUMMARY_COL_YTD_ACTUAL).value)
@@ -45,19 +54,42 @@ def _emit(rows, period, kpi, sheet, ws, r, business_line=None, skip_ytd=False, s
     py     = safe_number(ws.cell(r, SUMMARY_COL_PRIOR_YEAR).value)
 
     if actual is not None:
-        rows.append(row(period, kpi, actual, 'actual', business_line, sheet, ws.cell(r, SUMMARY_COL_ACTUAL).coordinate))
+        rows.append(row(period, kpi, actual, 'actual', business_line, sheet,
+                        ws.cell(r, SUMMARY_COL_ACTUAL).coordinate))
     if budget is not None:
-        rows.append(row(period, kpi, budget, 'budget', business_line, sheet, ws.cell(r, SUMMARY_COL_BUDGET).coordinate))
+        rows.append(row(period, kpi, budget, 'budget', business_line, sheet,
+                        ws.cell(r, SUMMARY_COL_BUDGET).coordinate))
     if not skip_ytd and ytd_a is not None:
-        rows.append(row(period, kpi, ytd_a, 'ytd_actual', business_line, sheet, ws.cell(r, SUMMARY_COL_YTD_ACTUAL).coordinate))
+        rows.append(row(period, kpi, ytd_a, 'ytd_actual', business_line, sheet,
+                        ws.cell(r, SUMMARY_COL_YTD_ACTUAL).coordinate))
     if not skip_ytd and ytd_b is not None:
-        rows.append(row(period, kpi, ytd_b, 'ytd_budget', business_line, sheet, ws.cell(r, SUMMARY_COL_YTD_BUDGET).coordinate))
+        rows.append(row(period, kpi, ytd_b, 'ytd_budget', business_line, sheet,
+                        ws.cell(r, SUMMARY_COL_YTD_BUDGET).coordinate))
     if not skip_py and py is not None:
-        rows.append(row(period, kpi, py, 'prior_year', business_line, sheet, ws.cell(r, SUMMARY_COL_PRIOR_YEAR).coordinate))
+        rows.append(row(period, kpi, py, 'prior_year', business_line, sheet,
+                        ws.cell(r, SUMMARY_COL_PRIOR_YEAR).coordinate))
+
+
+# Label → KPI mapping for the bottom section (scanned, not hardcoded)
+_BOTTOM_LABEL_MAP = {
+    'capitalised development':  'CAPEX',
+    'ebitda less capex':        'EBITDA_LESS_CAPEX',
+    'tech mrr':                 'TECH_MRR',
+    'ltm tech mrr':             'LTM_TECH_MRR',
+    'cash on hand':             'CASH_ON_HAND',
+    'cash at bank':             'CASH_ON_HAND',
+    'net working capital':      'NET_WORKING_CAPITAL',
+    'net debt':                 'NET_DEBT',
+    'cash burn':                'CASH_BURN',
+}
+
+# KPIs where YTD / Prior Year don't make sense (snapshot values)
+_BOTTOM_SKIP_YTD = {'TECH_MRR', 'LTM_TECH_MRR', 'CASH_ON_HAND',
+                    'NET_WORKING_CAPITAL', 'NET_DEBT', 'CASH_BURN', 'CAPEX'}
 
 
 def _parse_summary(wb, period_hint, rows):
-    """Extract business-line revenue, costs, contribution, Tech MRR, Cash from 'Summary '."""
+    """Extract BL revenue, costs, contribution, Tech MRR, Cash from 'Summary '."""
     sheet_name = find_sheet(wb, 'Summary')
     if not sheet_name:
         return period_hint
@@ -68,79 +100,127 @@ def _parse_summary(wb, period_hint, rows):
     if period is None:
         return None
 
-    # Business-line revenue
-    _emit(rows, period, 'REVENUE_ECOMMERCE', sheet_name, ws, 5, business_line='ecommerce')
-    _emit(rows, period, 'REVENUE_EMS',       sheet_name, ws, 6, business_line='ems')
-    _emit(rows, period, 'REVENUE_SERVICES',  sheet_name, ws, 7, business_line='services')
-    _emit(rows, period, 'REVENUE_TOTAL',     sheet_name, ws, 8, business_line='total')
+    # Detect whether col 10 is Prior Year
+    has_py = _has_prior_year_column(ws)
+    global_skip_py = not has_py
 
-    # Direct + Staff Costs (rows 9-11 contain combined direct+staff costs by business line in Era 1)
-    _emit(rows, period, 'DIRECT_COSTS_ECOMMERCE', sheet_name, ws, 9,  business_line='ecommerce')
-    _emit(rows, period, 'DIRECT_COSTS_EMS',       sheet_name, ws, 10, business_line='ems')
-    _emit(rows, period, 'DIRECT_COSTS_SERVICES',  sheet_name, ws, 11, business_line='services')
+    # ------- P&L SECTION (R5-R18) — stable across all layouts -------
+
+    # Business-line revenue
+    _emit(rows, period, 'REVENUE_ECOMMERCE', sheet_name, ws, 5,
+          business_line='ecommerce', skip_py=global_skip_py)
+    _emit(rows, period, 'REVENUE_EMS',       sheet_name, ws, 6,
+          business_line='ems', skip_py=global_skip_py)
+    _emit(rows, period, 'REVENUE_SERVICES',  sheet_name, ws, 7,
+          business_line='services', skip_py=global_skip_py)
+    _emit(rows, period, 'REVENUE_TOTAL',     sheet_name, ws, 8,
+          business_line='total', skip_py=global_skip_py)
+
+    # Direct + Staff Costs
+    _emit(rows, period, 'DIRECT_COSTS_ECOMMERCE', sheet_name, ws, 9,
+          business_line='ecommerce', skip_py=global_skip_py)
+    _emit(rows, period, 'DIRECT_COSTS_EMS',       sheet_name, ws, 10,
+          business_line='ems', skip_py=global_skip_py)
+    _emit(rows, period, 'DIRECT_COSTS_SERVICES',  sheet_name, ws, 11,
+          business_line='services', skip_py=global_skip_py)
 
     # Direct Contribution
-    _emit(rows, period, 'DIRECT_CONTRIBUTION_ECOMMERCE', sheet_name, ws, 13, business_line='ecommerce')
-    _emit(rows, period, 'DIRECT_CONTRIBUTION_EMS',       sheet_name, ws, 14, business_line='ems')
-    _emit(rows, period, 'DIRECT_CONTRIBUTION_SERVICES',  sheet_name, ws, 15, business_line='services')
-    _emit(rows, period, 'DIRECT_CONTRIBUTION_TOTAL',     sheet_name, ws, 16, business_line='total')
+    _emit(rows, period, 'DIRECT_CONTRIBUTION_ECOMMERCE', sheet_name, ws, 13,
+          business_line='ecommerce', skip_py=global_skip_py)
+    _emit(rows, period, 'DIRECT_CONTRIBUTION_EMS',       sheet_name, ws, 14,
+          business_line='ems', skip_py=global_skip_py)
+    _emit(rows, period, 'DIRECT_CONTRIBUTION_SERVICES',  sheet_name, ws, 15,
+          business_line='services', skip_py=global_skip_py)
+    _emit(rows, period, 'DIRECT_CONTRIBUTION_TOTAL',     sheet_name, ws, 16,
+          business_line='total', skip_py=global_skip_py)
 
-    # P&L bottom-line (from 'Summary ' — R17 Overheads, R18 EBITDA, R20 EBITDA less capex)
-    _emit(rows, period, 'TOTAL_OVERHEADS',    sheet_name, ws, 17)
-    _emit(rows, period, 'EBITDA',             sheet_name, ws, 18)
-    _emit(rows, period, 'EBITDA_LESS_CAPEX',  sheet_name, ws, 20)
+    # P&L bottom-line (R17 Overheads, R18 EBITDA — stable)
+    _emit(rows, period, 'TOTAL_OVERHEADS', sheet_name, ws, 17,
+          skip_py=global_skip_py)
+    _emit(rows, period, 'EBITDA',          sheet_name, ws, 18,
+          skip_py=global_skip_py)
 
-    # Tech MRR (authoritative)
-    _emit(rows, period, 'TECH_MRR',     sheet_name, ws, 28, skip_ytd=True, skip_py=True)
-    _emit(rows, period, 'LTM_TECH_MRR', sheet_name, ws, 29, skip_ytd=True, skip_py=True)
+    # ------- BOTTOM SECTION (R19+) — label-scanned for layout resilience -------
+    for r in range(19, min(45, ws.max_row) + 1):
+        label_raw = ws.cell(r, 1).value
+        if label_raw is None:
+            continue
+        label = str(label_raw).strip().lower()
+        kpi = _BOTTOM_LABEL_MAP.get(label)
+        if kpi is None:
+            continue
 
-    # Balance sheet snapshots
-    _emit(rows, period, 'CASH_ON_HAND',        sheet_name, ws, 30, skip_ytd=True, skip_py=True)
-    _emit(rows, period, 'NET_WORKING_CAPITAL', sheet_name, ws, 31, skip_ytd=True, skip_py=True)
-    _emit(rows, period, 'NET_DEBT',            sheet_name, ws, 32, skip_ytd=True, skip_py=True)
-    _emit(rows, period, 'CASH_BURN',           sheet_name, ws, 33, skip_ytd=True, skip_py=True)
+        skip_ytd = kpi in _BOTTOM_SKIP_YTD
+        _emit(rows, period, kpi, sheet_name, ws, r,
+              skip_ytd=skip_ytd, skip_py=(global_skip_py or skip_ytd))
 
     return period
 
 
-# Ecommerce P&L — breakdown (layout confirmed Nov 2024 + Oct 2025)
-# Col 5 = Actual. R16=Success, R17=SetUp, R18=Payment, R19=TotalRevenue
+# Ecommerce P&L — breakdown
+# Col 5 = Actual. Row positions vary slightly; scan by label for resilience.
 def _parse_ecommerce_pnl(wb, period, rows):
     sn = find_sheet(wb, 'Ecommerce P&L')
     if not sn or period is None:
         return
     ws = wb[sn]
-    for r, kpi in [(16, 'REVENUE_ECOM_SUCCESS_FEES'),
-                   (17, 'REVENUE_ECOM_SETUP_FEES'),
-                   (18, 'REVENUE_ECOM_PAYMENT_FEES')]:
-        v = safe_number(ws.cell(r, 5).value)
-        if v is not None:
-            rows.append(row(period, kpi, v, 'actual', 'ecommerce', sn, ws.cell(r, 5).coordinate))
+
+    label_map = {
+        'success fees': 'REVENUE_ECOM_SUCCESS_FEES',
+        'setup fees':   'REVENUE_ECOM_SETUP_FEES',
+        'set up fees':  'REVENUE_ECOM_SETUP_FEES',
+        'payment fees': 'REVENUE_ECOM_PAYMENT_FEES',
+    }
+    for r in range(1, min(40, ws.max_row) + 1):
+        label = str(ws.cell(r, 1).value or '').strip().lower()
+        kpi = label_map.get(label)
+        if kpi is None:
+            # Also try partial matching
+            for key, kpi_name in label_map.items():
+                if key in label:
+                    kpi = kpi_name
+                    break
+        if kpi:
+            v = safe_number(ws.cell(r, 5).value)
+            if v is not None:
+                rows.append(row(period, kpi, v, 'actual', 'ecommerce', sn,
+                                ws.cell(r, 5).coordinate))
 
 
-# EMS P&L — subscription breakdown (layout confirmed Nov 2024 + Oct 2025)
-# R15=Spa, R16=Salon, R17=Salonlite, R18=College, R19=TotalSubscription, R20=SetUp,
-# R21=Memberships, R22=Hardware, R23=Partner, R24=TotalRevenue
+# EMS P&L — subscription breakdown
 def _parse_ems_pnl(wb, period, rows):
     sn = find_sheet(wb, 'EMS P&L')
     if not sn or period is None:
         return
     ws = wb[sn]
-    for r, kpi, bl in [(19, 'REVENUE_EMS_SUBSCRIPTION', 'ems'),
-                       (20, 'REVENUE_EMS_SETUP',        'ems'),
-                       (22, 'REVENUE_EMS_HARDWARE',     'ems')]:
-        v = safe_number(ws.cell(r, 5).value)
-        if v is not None:
-            rows.append(row(period, kpi, v, 'actual', bl, sn, ws.cell(r, 5).coordinate))
+
+    label_map = {
+        'total subscription':  'REVENUE_EMS_SUBSCRIPTION',
+        'subscription':        'REVENUE_EMS_SUBSCRIPTION',
+        'set up':              'REVENUE_EMS_SETUP',
+        'setup':               'REVENUE_EMS_SETUP',
+        'hardware':            'REVENUE_EMS_HARDWARE',
+    }
+    for r in range(1, min(40, ws.max_row) + 1):
+        raw = str(ws.cell(r, 1).value or '').strip()
+        label = raw.lower()
+        kpi = label_map.get(label)
+        if kpi is None:
+            for key, kpi_name in label_map.items():
+                if key in label and 'total' not in label:
+                    kpi = kpi_name
+                    break
+            # Prefer 'total subscription' over bare 'subscription'
+            if label == 'total subscription':
+                kpi = 'REVENUE_EMS_SUBSCRIPTION'
+        if kpi:
+            v = safe_number(ws.cell(r, 5).value)
+            if v is not None:
+                rows.append(row(period, kpi, v, 'actual', 'ems', sn,
+                                ws.cell(r, 5).coordinate))
 
 
-# Headcount — Era 1 layout is WIDE: teams in col B (with merged-cell gaps), date
-# headers in row 2 across columns C..AJ (can extend to col 36+ as the sheet grows
-# historically). There are TWO blocks: counts (R4..~R19) and Gross Payroll (R23+).
-# For Era 1 we emit the headcount for the column matching the file's reporting
-# period. HEADCOUNT_TOTAL is computed as the sum of numeric rows within the
-# counts block (robust across layout drift where an explicit 'Total' row is not
-# reliably placed).
+# Headcount — Era 1 layout is WIDE: teams in col B, date headers in row 2 across cols.
 def _parse_headcount_era1(wb, period, rows):
     sn = find_sheet(wb, 'Headcount')
     if not sn or period is None:
@@ -148,7 +228,7 @@ def _parse_headcount_era1(wb, period, rows):
     ws = wb[sn]
     target_ym = period[:7]  # "YYYY-MM"
 
-    # Find target column by scanning the ENTIRE row-2 width (can go up to col 36+)
+    # Find target column by scanning row 2 headers
     target_col = None
     for c in range(3, ws.max_column + 1):
         v = ws.cell(2, c).value
@@ -169,20 +249,14 @@ def _parse_headcount_era1(wb, period, rows):
     if target_col is None:
         return
 
-    # Determine counts-block end: first row whose col A label starts with
-    # 'Gross Payroll' marks the start of the next block.
-    block_end = 22  # conservative default
+    # Determine counts-block end
+    block_end = 22
     for r in range(4, min(35, ws.max_row) + 1):
         a = ws.cell(r, 1).value
         if a and str(a).strip().lower().startswith('gross payroll'):
             block_end = r
             break
 
-    # Strategy: only count rows where col B has an explicit team label.
-    # Rationale: across Era 1 files the layout has a 'Total' row embedded mid-block
-    # with no label (e.g. R19 in Nov-24 = 119). Counting unlabeled rows
-    # double-counts. Labelled-only sum may slightly undercount if merged cells
-    # drop labels (Apr 25+), but will never inflate the total.
     total = 0.0
     seen_value = False
     for r in range(4, block_end):
@@ -206,12 +280,12 @@ def _parse_headcount_era1(wb, period, rows):
 
 
 def parse(wb, file_name=None):
-    """Parse an Era 1 file into canonical rows."""
+    """Parse an Era 1 / FY24 file into canonical rows."""
     rows = []
     period_hint = period_from_filename(file_name)
     period = _parse_summary(wb, period_hint, rows)
 
-    # Jun/Jul 2025 have no date cell in Summary — fall back to filename
+    # Some files have no date cell in Summary — fall back to filename
     if period is None:
         period = period_hint
     if period is None:
