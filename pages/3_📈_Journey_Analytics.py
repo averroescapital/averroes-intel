@@ -105,12 +105,27 @@ if df_all.empty:
 df_all = df_all.sort_values("period").reset_index(drop=True)
 
 # ============================================================
-# AUTO LAST-12-MONTHS FILTER
+# MONTH SELECTOR + TRAILING 12-MONTH FILTER
 # ============================================================
 all_periods = sorted(df_all["period"].unique())
-latest = all_periods[-1]
+
+st.markdown("<div class='main-header'>Journey Hospitality — Trailing 12-Month Analytics</div>",
+            unsafe_allow_html=True)
+
+# Month picker — formatted as "Mar-26", defaulting to latest
+period_labels = {p: p.strftime("%b-%y") for p in all_periods}
+sel_col, info_col = st.columns([2, 4])
+with sel_col:
+    selected = st.selectbox(
+        "Select month (end of window)",
+        options=all_periods,
+        index=len(all_periods) - 1,
+        format_func=lambda p: period_labels[p],
+    )
+
+latest = selected
 cutoff = latest - pd.DateOffset(months=11)
-df = df_all[df_all["period"] >= cutoff].copy().reset_index(drop=True)
+df = df_all[df_all["period"].between(cutoff, latest)].copy().reset_index(drop=True)
 df["period_label"] = df["period"].dt.strftime("%b-%y")
 
 # Also get the prior-year row for YoY comparison
@@ -121,15 +136,14 @@ has_py = not py_row.empty
 # Latest row
 last = df.iloc[-1]
 
-st.markdown("<div class='main-header'>Journey Hospitality — Trailing 12-Month Analytics</div>",
-            unsafe_allow_html=True)
-st.markdown(
-    f"<div class='sub-header'>"
-    f"Showing {df['period'].min():%b %Y} to {df['period'].max():%b %Y} "
-    f"({len(df)} months) &nbsp;|&nbsp; Source: <b>{source}</b>"
-    f"</div>",
-    unsafe_allow_html=True,
-)
+with info_col:
+    st.markdown(
+        f"<div class='sub-header' style='margin-top:28px;'>"
+        f"Showing {df['period'].min():%b %Y} to {df['period'].max():%b %Y} "
+        f"({len(df)} months) &nbsp;|&nbsp; Source: <b>{source}</b>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
 
 
 # ============================================================
@@ -231,7 +245,7 @@ ltm["ltm_tech"] = ltm["ltm_revenue_ecommerce_actual"].fillna(0) + \
 ltm["ltm_services"] = ltm["ltm_revenue_services_actual"].fillna(0)
 
 # Filter to display window
-ltm_display = ltm[ltm["period"] >= cutoff].copy().reset_index(drop=True)
+ltm_display = ltm[ltm["period"].between(cutoff, latest)].copy().reset_index(drop=True)
 ltm_display["period_label"] = ltm_display["period"].dt.strftime("%b-%y")
 
 chart_col2, badge_col2 = st.columns([5, 1])
