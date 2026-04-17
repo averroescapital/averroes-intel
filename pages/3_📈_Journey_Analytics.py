@@ -135,6 +135,11 @@ st.markdown(
 # ============================================================
 # HELPER: Growth % calculation
 # ============================================================
+def safe_int_text(series):
+    """Convert a numeric series to int strings for chart labels, NaN → ''."""
+    return series.fillna(0).fillna(0).round(0).astype(int)
+
+
 def yoy_growth(current, prior):
     """Return YoY growth % or None."""
     if pd.isna(current) or pd.isna(prior) or prior == 0:
@@ -163,14 +168,14 @@ with chart_col:
     fig1.add_bar(
         x=df["period_label"], y=df["tech_revenue"],
         name="Tech Revenues", marker_color=TECH_COLOR,
-        text=df["tech_revenue"].round(0).astype(int),
+        text=df["tech_revenue"].fillna(0).round(0).astype(int),
         textposition="inside", textfont=dict(color="white", size=10),
     )
     # Services revenue (green)
     fig1.add_bar(
         x=df["period_label"], y=df["services_revenue"],
         name="Service Revenues", marker_color=SERVICES_COLOR,
-        text=df["services_revenue"].round(0).astype(int),
+        text=df["services_revenue"].fillna(0).round(0).astype(int),
         textposition="inside", textfont=dict(color=NAVY, size=10),
     )
     # Total group (grey dots)
@@ -178,7 +183,7 @@ with chart_col:
         x=df["period_label"], y=df["revenue_total_actual"],
         mode="markers+text", name="Total Group Revenues",
         marker=dict(color=TOTAL_COLOR, size=8),
-        text=df["revenue_total_actual"].round(0).astype(int),
+        text=df["revenue_total_actual"].fillna(0).round(0).astype(int),
         textposition="top center", textfont=dict(size=10, color=TOTAL_COLOR),
     ))
 
@@ -237,20 +242,20 @@ with chart_col2:
     fig2.add_bar(
         x=ltm_display["period_label"], y=ltm_display["ltm_tech"],
         name="Tech Revenues", marker_color=TECH_COLOR,
-        text=ltm_display["ltm_tech"].round(0).astype(int),
+        text=ltm_display["ltm_tech"].fillna(0).round(0).astype(int),
         textposition="inside", textfont=dict(color="white", size=10),
     )
     fig2.add_bar(
         x=ltm_display["period_label"], y=ltm_display["ltm_services"],
         name="Service Revenues", marker_color=SERVICES_COLOR,
-        text=ltm_display["ltm_services"].round(0).astype(int),
+        text=ltm_display["ltm_services"].fillna(0).round(0).astype(int),
         textposition="inside", textfont=dict(color=NAVY, size=10),
     )
     fig2.add_trace(go.Scatter(
         x=ltm_display["period_label"], y=ltm_display["ltm_revenue_total_actual"],
         mode="markers+text", name="Total Group Revenues",
         marker=dict(color=TOTAL_COLOR, size=8),
-        text=ltm_display["ltm_revenue_total_actual"].round(0).astype(int),
+        text=ltm_display["ltm_revenue_total_actual"].fillna(0).round(0).astype(int),
         textposition="top center", textfont=dict(size=10, color=TOTAL_COLOR),
     ))
 
@@ -317,20 +322,20 @@ with chart_col3:
     fig3.add_bar(
         x=df["period_label"], y=df["tech_arr_display"],
         name="Tech ARR", marker_color=TECH_COLOR,
-        text=df["tech_arr_display"].round(0).astype(int),
+        text=df["tech_arr_display"].fillna(0).round(0).astype(int),
         textposition="inside", textfont=dict(color="white", size=10),
     )
     fig3.add_bar(
         x=df["period_label"], y=df["services_arr_display"],
         name="Services ARR", marker_color=SERVICES_COLOR,
-        text=df["services_arr_display"].round(0).astype(int),
+        text=df["services_arr_display"].fillna(0).round(0).astype(int),
         textposition="inside", textfont=dict(color=NAVY, size=10),
     )
     fig3.add_trace(go.Scatter(
         x=df["period_label"], y=df["total_arr_display"],
         mode="markers+text", name="Total ARR",
         marker=dict(color=TOTAL_COLOR, size=8),
-        text=df["total_arr_display"].round(0).astype(int),
+        text=df["total_arr_display"].fillna(0).round(0).astype(int),
         textposition="top center", textfont=dict(size=10, color=TOTAL_COLOR),
     ))
 
@@ -413,7 +418,7 @@ if mod_series is not None and mod_series.notna().any():
             y=mod_values.values,
             name=mod_label,
             marker_color=ACCENT_GREEN,
-            text=mod_values.round(0).astype(int).values,
+            text=mod_values.fillna(0).round(0).astype(int).values,
             textposition="outside",
             textfont=dict(size=10, color=NAVY),
         )
