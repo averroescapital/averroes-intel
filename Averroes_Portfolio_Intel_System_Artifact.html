@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Averroes Portfolio Intelligence - Complete System Artifact</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js"></script>
+<style>
+  :root {
+    --navy: #0f172a;
+    --blue: #0ea5e9;
+    --light-bg: #f8fafc;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --muted: #64748b;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --red: #ef4444;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--text);
+    background: #fff;
+    line-height: 1.7;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 32px;
+  }
+  h1 { font-size: 2.2rem; color: var(--navy); margin: 0 0 8px 0; border-bottom: 3px solid var(--blue); padding-bottom: 12px; }
+  h2 { font-size: 1.6rem; color: var(--navy); margin: 48px 0 16px 0; border-bottom: 2px solid var(--blue); padding-bottom: 8px; }
+  h3 { font-size: 1.25rem; color: var(--navy); margin: 32px 0 12px 0; }
+  h4 { font-size: 1.05rem; color: var(--muted); margin: 24px 0 8px 0; font-weight: 600; }
+  p { margin: 0 0 14px 0; }
+  .subtitle { color: var(--muted); font-size: 1rem; margin-bottom: 32px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; }
+  .badge-live { background: #dcfce7; color: #166534; }
+  .badge-era1 { background: #dbeafe; color: #1e40af; }
+  .badge-era2 { background: #fef3c7; color: #92400e; }
+  .badge-era3 { background: #dcfce7; color: #166534; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0 24px 0; font-size: 0.92rem; }
+  th { background: var(--navy); color: #fff; text-align: left; padding: 10px 14px; font-weight: 600; }
+  td { padding: 8px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) { background: var(--light-bg); }
+  code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 0.88em; font-family: 'Cascadia Code', 'Fira Code', monospace; }
+  pre { background: var(--code-bg); color: var(--code-text); padding: 20px; border-radius: 8px; overflow-x: auto; margin: 12px 0 20px 0; font-size: 0.85rem; line-height: 1.6; }
+  pre code { background: none; padding: 0; color: inherit; }
+  .info-box { background: #eff6ff; border-left: 4px solid var(--blue); padding: 16px 20px; margin: 16px 0; border-radius: 0 8px 8px 0; }
+  .warn-box { background: #fffbeb; border-left: 4px solid var(--amber); padding: 16px 20px; margin: 16px 0; border-radius: 0 8px 8px 0; }
+  .crit-box { background: #fef2f2; border-left: 4px solid var(--red); padding: 16px 20px; margin: 16px 0; border-radius: 0 8px 8px 0; }
+  .file-tree { background: var(--light-bg); padding: 20px; border-radius: 8px; font-family: monospace; font-size: 0.85rem; line-height: 1.8; white-space: pre; overflow-x: auto; }
+  .mermaid { margin: 24px 0; }
+  .kv-grid { display: grid; grid-template-columns: 180px 1fr; gap: 4px 16px; margin: 12px 0 20px 0; }
+  .kv-grid dt { font-weight: 600; color: var(--muted); font-size: 0.9rem; }
+  .kv-grid dd { font-size: 0.95rem; }
+  .comment { color: #6a9955; }
+  .keyword { color: #c586c0; }
+  .string { color: #ce9178; }
+  .func { color: #dcdcaa; }
+  .section-num { color: var(--blue); font-weight: 700; margin-right: 6px; }
+  ul, ol { margin: 8px 0 16px 24px; }
+  li { margin-bottom: 6px; }
+  @media print {
+    body { padding: 20px; font-size: 10pt; }
+    pre { font-size: 8pt; }
+    h2 { page-break-before: always; }
+    h2:first-of-type { page-break-before: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Averroes Portfolio Intelligence Platform</h1>
+<p class="subtitle">Complete System Artifact &mdash; End-to-End Technical Reference<br>
+<strong>Version:</strong> 2.0.4 &nbsp;|&nbsp; <strong>Date:</strong> April 17, 2026 &nbsp;|&nbsp; <strong>Status:</strong> <span class="badge badge-live">LIVE</span></p>
+
+<div class="info-box">
+<strong>Purpose:</strong> This document is a self-contained system artifact designed to give a new developer or AI assistant complete context to continue development. It covers the full architecture, every file path, all code logic, GCP infrastructure, deployment procedures, and data model in precise detail.
+</div>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">0.</span> End-to-End System Flow Diagram</h2>
+<!-- ============================================================ -->
+
+<p>This diagram shows the complete data journey from raw Excel upload through to the live Streamlit dashboard.</p>
+
+<div class="mermaid">
+graph TB
+    subgraph INPUT ["1. DATA INPUT"]
+        A["Portfolio Company<br/>uploads monthly<br/>MA Excel file"] --> B["GCS Bucket<br/><code>averroes-portfolio-intel-portfolio-data</code><br/><code>portco-alpha/ma-files/*.xlsx</code>"]
+    end
+
+    subgraph CF ["2. CLOUD FUNCTION: portfolio-data-ingest"]
+        B -->|"GCS trigger:<br/>object.v1.finalized"| C["main.py<br/><code>process_file()</code>"]
+        C --> D["ERA ROUTER<br/><code>parsers/router.py</code><br/>detect_era(wb)"]
+        D -->|"has Financial KPIs"| E1["era3_parser.py"]
+        D -->|"has P&L Detail only"| E2["era2_parser.py"]
+        D -->|"has Summary only"| E3["era1_parser.py"]
+    end
+
+    subgraph PARSERS ["3. PARSING (Cell-by-Cell Excel Extraction)"]
+        E1 --> F1["Financial KPIs sheet<br/>Tech MRR, ARPC, Rule of 40<br/>Revenue Churn, Margins, EV"]
+        E1 --> F2["Revenue Waterfall sheet"]
+        E1 --> F3["Customer Numbers sheet<br/>Properties per BL"]
+        E1 --> F4["P&L Summary<br/>YTD Actual/Budget/PY"]
+        E1 --> F5["Cash Flow sheet"]
+        E1 --> F6["KPI data sheet<br/>S&M Cost, TCV"]
+        E1 --> F7["Inherited from Era 2:<br/>P&L Detail, Balance Sheet<br/>Headcount, GL Covenants<br/>Guard Rails, Cosmo Portal"]
+        E2 --> F7
+        E3 --> F8["Summary sheet only<br/>+ Headcount"]
+    end
+
+    subgraph MEDALLION ["4. MEDALLION PIPELINE (silver_gold_v2.py)"]
+        F1 & F2 & F3 & F4 & F5 & F6 & F7 & F8 --> G["Parsed Rows<br/>(list of dicts)"]
+        G --> H["write_bronze()<br/><code>bronze.raw_management_accounts</code><br/>Immutable audit trail"]
+        G --> I["build_silver_from_parsed()<br/>Normalize units + derive metrics<br/>(Ecommerce MRR, EMS MRR, ARR)"]
+        I --> J["write_silver()<br/><code>silver.kpi_long</code><br/>Long format, partitioned by month"]
+        J --> K["pivot_to_gold()<br/>Wide format, 1 row per period<br/>FY calc, cumulative YTD"]
+        K --> L["write_gold()<br/><code>gold.kpi_monthly_v2</code><br/>~160 columns, partitioned by month"]
+    end
+
+    subgraph DASHBOARD ["5. STREAMLIT DASHBOARD"]
+        L --> M["pe_app.py<br/>BigQuery query:<br/><code>SELECT * FROM gold.kpi_monthly_v2</code>"]
+        M --> N["harmonize_v2_columns()<br/>Map gold cols to display names<br/>Derive CAC, LTV, Payback"]
+        N --> O1["Executive Summary"]
+        N --> O2["ARR / MRR / Scale"]
+        N --> O3["Unit Economics"]
+        N --> O4["P&L Waterfall"]
+        N --> O5["Retention / Churn"]
+        N --> O6["Capital Efficiency / Cash"]
+        N --> O7["People / Headcount"]
+        N --> O8["YTD Comparison Table"]
+    end
+
+    subgraph VIEWS ["6. GOLD VIEWS (BigQuery)"]
+        L --> V1["revenue_ltm_by_bl<br/>Last 12 months by BL"]
+        L --> V2["tech_arr_split<br/>Ecommerce vs EMS share"]
+        L --> V3["modules_live_view<br/>Property counts by BL"]
+    end
+
+    style INPUT fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style CF fill:#fef3c7,stroke:#f59e0b,color:#78350f
+    style PARSERS fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    style MEDALLION fill:#fdf2f8,stroke:#ec4899,color:#831843
+    style DASHBOARD fill:#f8fafc,stroke:#0ea5e9,color:#0c4a6e
+    style VIEWS fill:#f5f3ff,stroke:#8b5cf6,color:#4c1d95
+</div>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">1.</span> Infrastructure &amp; Credentials</h2>
+<!-- ============================================================ -->
+
+<h3>1.1 Google Cloud Platform</h3>
+<dl class="kv-grid">
+  <dt>GCP Project ID</dt><dd><code>averroes-portfolio-intel</code></dd>
+  <dt>Region</dt><dd><code>europe-west2</code> (London)</dd>
+  <dt>GCS Bucket</dt><dd><code>averroes-portfolio-intel-portfolio-data</code></dd>
+  <dt>SA Key Path</dt><dd><code>/Users/ishuratna/Downloads/averroes-portfolio-intel-a35a3d912d2c.json</code></dd>
+  <dt>SA Email</dt><dd><code>averroes-dashboard-live@averroes-portfolio-intel.iam.gserviceaccount.com</code></dd>
+  <dt>SA Roles</dt><dd><code>bigquery.admin</code>, <code>storage.admin</code></dd>
+</dl>
+
+<h3>1.2 BigQuery Datasets &amp; Tables</h3>
+<table>
+  <tr><th>Layer</th><th>Full Table Name</th><th>Purpose</th></tr>
+  <tr><td>Bronze</td><td><code>averroes-portfolio-intel.bronze.raw_management_accounts</code></td><td>Immutable audit trail of every parsed cell</td></tr>
+  <tr><td>Silver</td><td><code>averroes-portfolio-intel.silver.kpi_long</code></td><td>Normalized long-format KPIs, partitioned by month</td></tr>
+  <tr><td>Gold</td><td><code>averroes-portfolio-intel.gold.kpi_monthly_v2</code></td><td>Wide dashboard-ready table (~160 cols), partitioned by month</td></tr>
+  <tr><td>View</td><td><code>averroes-portfolio-intel.gold.revenue_ltm_by_bl</code></td><td>LTM revenue by business line</td></tr>
+  <tr><td>View</td><td><code>averroes-portfolio-intel.gold.tech_arr_split</code></td><td>Tech ARR decomposed into Ecom/EMS shares</td></tr>
+  <tr><td>View</td><td><code>averroes-portfolio-intel.gold.modules_live_view</code></td><td>Property/module counts per BL</td></tr>
+</table>
+
+<h3>1.3 Cloud Function</h3>
+<dl class="kv-grid">
+  <dt>Function Name</dt><dd><code>portfolio-data-ingest</code></dd>
+  <dt>Runtime</dt><dd>Python 3.11, Gen2</dd>
+  <dt>Memory</dt><dd>512 MB</dd>
+  <dt>Timeout</dt><dd>300 seconds</dd>
+  <dt>Entry Point</dt><dd><code>process_file</code> (in <code>functions/ingest/main.py</code>)</dd>
+  <dt>Trigger</dt><dd>GCS <code>object.v1.finalized</code> on the portfolio-data bucket</dd>
+  <dt>Source</dt><dd><code>functions/ingest/</code></dd>
+  <dt>Revision</dt><dd>00015</dd>
+  <dt>URL</dt><dd><code>https://portfolio-data-ingest-e44q256enq-nw.a.run.app</code></dd>
+</dl>
+
+<h3>1.4 GitHub</h3>
+<dl class="kv-grid">
+  <dt>Repository</dt><dd><code>https://github.com/averroescapital/averroes-intel.git</code></dd>
+  <dt>Branch</dt><dd><code>main</code></dd>
+  <dt>Local Clone</dt><dd><code>/Users/ishuratna/.gemini/antigravity/scratch/averroes-portfolio-intel</code></dd>
+</dl>
+
+<h3>1.5 Streamlit Dashboard</h3>
+<dl class="kv-grid">
+  <dt>Live URL</dt><dd><code>https://averroes-capital-123.streamlit.app/</code></dd>
+  <dt>Platform</dt><dd>Streamlit Community Cloud</dd>
+  <dt>Auth Method</dt><dd><code>gcp_service_account</code> via Streamlit Secrets (<code>.streamlit/secrets.toml</code>)</dd>
+  <dt>Main File</dt><dd><code>pe_app.py</code> (project root)</dd>
+</dl>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">2.</span> Complete File Tree</h2>
+<!-- ============================================================ -->
+
+<div class="file-tree">averroes-portfolio-intel/
+|
+|-- pe_app.py                              <strong># PRIMARY Streamlit dashboard (1182 lines)</strong>
+|-- requirements.txt                       # Root-level dependencies
+|-- kpi_taxonomy.yaml                      # Canonical KPI catalog
+|-- PROJECT_BRIEF.md                       # Living source of truth
+|-- CHANGELOG.md                           # Session-by-session log
+|-- .gitignore
+|
+|-- config/
+|   `-- kpi_taxonomy.yaml                  # Shared taxonomy config (446 lines)
+|
+|-- bq_schemas/
+|   |-- silver_gold_v2.sql                 <strong># V2 schema definition (309 lines)</strong>
+|   |-- schemas.sql                        # V1 legacy
+|   |-- gold_views.sql                     # V1 derived views
+|   `-- alter_add_wf_columns.sql           # Waterfall columns (legacy)
+|
+|-- functions/
+|   |-- ingest/                            <strong># CLOUD FUNCTION SOURCE</strong>
+|   |   |-- main.py                        <strong># Entry point: process_file() (248 lines)</strong>
+|   |   |-- silver_gold_v2.py              <strong># Silver+Gold transform (396 lines)</strong>
+|   |   |-- ma_parser.py                   # Legacy dispatcher (193 lines)
+|   |   |-- backfill.py                    # Batch backfill runner (98 lines)
+|   |   |-- requirements.txt               # Cloud Function deps
+|   |   |-- parsers/
+|   |   |   |-- __init__.py
+|   |   |   |-- router.py                  <strong># Era detection + dispatch (43 lines)</strong>
+|   |   |   |-- common.py                  <strong># Shared helpers (112 lines)</strong>
+|   |   |   |-- schema.py                  # Canonical KPI catalog (175 lines)
+|   |   |   |-- era1_parser.py             # Nov 2024 - Oct 2025 (224 lines)
+|   |   |   |-- era2_parser.py             # Nov 2025 - Dec 2025 (576 lines)
+|   |   |   `-- era3_parser.py             <strong># Jan 2026+ canonical (446 lines)</strong>
+|   |   `-- kpi_taxonomy.yaml
+|   |
+|   `-- anomaly_detect/
+|       |-- main.py                        # Scheduled anomaly detection
+|       `-- requirements.txt
+|
+|-- deploy/
+|   |-- deploy_v2.py                       <strong># Full 5-step deployment CLI (314 lines)</strong>
+|   |-- load_bq_backfill.py                # CSV to BQ loader (112 lines)
+|   |-- migrate_v2.sh                      # One-shot migration runbook (123 lines)
+|   |-- Dockerfile
+|   |-- requirements.txt
+|   `-- parsers/
+|       |-- __init__.py
+|       `-- alpha_parser.py                # Advanced era parser (406 lines)
+|
+|-- dashboard/
+|   |-- app.py                             # Alternate 7-view dashboard (838 lines)
+|   |-- requirements.txt
+|   |-- .streamlit/
+|   |   `-- secrets.toml                   # GCP creds (gitignored)
+|   |-- pages/
+|   |   |-- 1_AI_Data_Analyst.py           # Gemini NL-to-SQL chat
+|   |   `-- 2_Era_View.py                  # Per-era breakdown
+|   |-- gold_kpi_monthly.csv               # Local fallback
+|   `-- silver_kpi_long.csv                # Backfill output
+|
+|-- raw_ma_files/                          <strong># 16 actual MA Excel files (gitignored)</strong>
+|   |-- FY25 Management Accounts - November 24.xlsx    [Era 1 start]
+|   |-- ... (12 Era 1 files: Nov 24 - Oct 25)
+|   |-- FY26 Management Accounts - November 25.xlsx    [Era 2 start]
+|   |-- 2. FY26 Management Accounts - December 25.xlsx
+|   |-- 3. FY26 Management Accounts - January 26.xlsx  [Era 3 start]
+|   `-- 4. FY26 Management Accounts - February 26.xlsx
+|
+|-- analysis/
+|   |-- profile_ma_files.py                # Audit MA files for sheet presence
+|   `-- profile_report.md
+|
+`-- sample_data/
+    |-- portco-alpha/
+    |-- portco-beta/
+    `-- portco-gamma/</div>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">3.</span> The Era Model (Critical Concept)</h2>
+<!-- ============================================================ -->
+
+<p>Portco Alpha's Management Accounts evolved dramatically over 16 months. The parser branches by "era" because the available Excel sheets and their layouts differ significantly between time periods.</p>
+
+<table>
+  <tr><th>Era</th><th>Months</th><th>Files</th><th>Key Sheets Available</th><th>Parser</th></tr>
+  <tr>
+    <td><span class="badge badge-era1">Era 1</span></td>
+    <td>Nov 2024 &ndash; Oct 2025</td>
+    <td>12</td>
+    <td><code>Summary</code> (with trailing space drift), <code>Headcount</code>, basic P&amp;L</td>
+    <td><code>era1_parser.py</code></td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-era2">Era 2</span></td>
+    <td>Nov 2025 &ndash; Dec 2025</td>
+    <td>2</td>
+    <td>+ <code>P&amp;L Detail</code>, <code>Balance Sheet</code>, <code>GL Covenants</code>, <code>Averroes Guard Rails</code>, <code>Cosmo Portal Upload</code></td>
+    <td><code>era2_parser.py</code></td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-era3">Era 3</span></td>
+    <td>Jan 2026 &ndash; Feb 2026</td>
+    <td>2</td>
+    <td>+ <code>Financial KPIs</code>, <code>Revenue Waterfall</code>, <code>Customer Numbers</code>, <code>Cash Flow</code>, <code>KPI data</code>, <code>P&amp;L Summary</code></td>
+    <td><code>era3_parser.py</code></td>
+  </tr>
+</table>
+
+<h3>3.1 Era Detection Logic</h3>
+<p>File: <code>functions/ingest/parsers/router.py</code></p>
+<pre><code><span class="comment"># Era signatures:</span>
+<span class="comment">#   era3: has 'Financial KPIs' sheet</span>
+<span class="comment">#   era2: has 'P&amp;L Detail' AND NO 'Financial KPIs'</span>
+<span class="comment">#   era1: has 'Summary' sheet only</span>
+
+<span class="keyword">def</span> <span class="func">detect_era</span>(wb):
+    has_financial_kpi = find_sheet(wb, 'Financial KPIs') <span class="keyword">is not</span> None
+    has_pnl_detail    = find_sheet(wb, 'P&amp;L Detail') <span class="keyword">is not</span> None
+    has_summary       = find_sheet(wb, 'Summary') <span class="keyword">is not</span> None
+
+    <span class="keyword">if</span> has_financial_kpi: <span class="keyword">return</span> <span class="string">'era3'</span>
+    <span class="keyword">if</span> has_pnl_detail:    <span class="keyword">return</span> <span class="string">'era2'</span>
+    <span class="keyword">if</span> has_summary:       <span class="keyword">return</span> <span class="string">'era1'</span>
+    <span class="keyword">return</span> <span class="string">'era3'</span>  <span class="comment"># fallback</span></code></pre>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">4.</span> Parser Architecture (Complete Code)</h2>
+<!-- ============================================================ -->
+
+<h3>4.1 Common Utilities &mdash; <code>parsers/common.py</code></h3>
+<p>Every parser returns rows shaped as: <code>{period, kpi, value, value_type, business_line, sheet, source_cell}</code></p>
+
+<pre><code><span class="keyword">def</span> <span class="func">period_from_filename</span>(file_name):
+    <span class="comment">"""Best-effort period extraction from filename.</span>
+<span class="comment">    Handles: 'FY25 Management Accounts - June 25.xlsx' -> 2025-06-01</span>
+<span class="comment">    '4. FY26 Management Accounts - February 26.xlsx' -> 2026-02-01"""</span>
+    <span class="comment"># Regex matches &lt;month_name&gt; &lt;2-digit-year&gt;</span>
+    m = re.search(r'(january|...|dec)\s*[- ]?\s*(\d{2})\b', name)
+    <span class="keyword">if</span> m:
+        mo = months[m.group(1)]
+        yr = 2000 + int(m.group(2))
+        <span class="keyword">return</span> f<span class="string">"{yr:04d}-{mo:02d}-01"</span>
+
+<span class="keyword">def</span> <span class="func">safe_number</span>(v):
+    <span class="comment">"""Coerce cell value to float, or None if not numeric."""</span>
+    <span class="keyword">if</span> isinstance(v, (int, float)) <span class="keyword">and not</span> isinstance(v, bool):
+        <span class="keyword">return</span> float(v)
+    <span class="keyword">return</span> None
+
+<span class="keyword">def</span> <span class="func">find_sheet</span>(wb, target_name):
+    <span class="comment">"""Find sheet by name, tolerating trailing space and case drift."""</span>
+    target_n = target_name.strip().lower()
+    <span class="keyword">for</span> s <span class="keyword">in</span> wb.sheetnames:
+        <span class="keyword">if</span> s.strip().lower() == target_n: <span class="keyword">return</span> s
+    <span class="keyword">return</span> None
+
+<span class="keyword">def</span> <span class="func">row</span>(period, kpi, value, value_type=<span class="string">'actual'</span>, business_line=None, sheet=None, source_cell=None):
+    <span class="comment">"""Build a canonical row dict."""</span>
+    <span class="keyword">return</span> {
+        <span class="string">'period'</span>: period, <span class="string">'kpi'</span>: kpi, <span class="string">'value'</span>: float(value),
+        <span class="string">'value_type'</span>: value_type, <span class="string">'business_line'</span>: business_line,
+        <span class="string">'sheet'</span>: sheet, <span class="string">'source_cell'</span>: source_cell,
+    }</code></pre>
+
+<h3>4.2 Era 3 Parser &mdash; <code>parsers/era3_parser.py</code> (Canonical)</h3>
+
+<div class="info-box">
+<strong>Key insight:</strong> Era 3 is the canonical parser. It inherits ALL Era 2 extraction functions and adds: Financial KPIs, Revenue Waterfall, Customer Numbers, Cash Flow, P&amp;L Summary, and KPI data sheets.
+</div>
+
+<h4>4.2.1 Financial KPIs Extraction</h4>
+<p>The Financial KPIs sheet has a unique block-based layout. Header rows at positions 3, 19, 35, 51, 67 contain section labels. Below each header: +1 = Prior Year, +2 = Budget, +3 = Actual.</p>
+
+<pre><code><span class="comment"># Block label mapping (sheet header text -> canonical KPI name)</span>
+_FIN_KPI_BLOCKS = {
+    <span class="string">'TECH MRR - CURRENT MONTH'</span>:     <span class="string">'TECH_MRR'</span>,       <span class="comment"># Raw GBP!</span>
+    <span class="string">'TECH MRR - YTD'</span>:               <span class="string">'LTM_TECH_MRR'</span>,
+    <span class="string">'SERVICES MRR - CURRENT MONTH'</span>:  <span class="string">'SERVICES_MRR'</span>,    <span class="comment"># Raw GBP!</span>
+    <span class="string">'SERVICES MRR - YTD'</span>:            <span class="string">'LTM_SERVICES_MRR'</span>,
+    <span class="string">'AVE REVENUE PER CUSTOMER...'</span>:   <span class="string">'ARPC'</span>,
+    <span class="string">'TECH GROSS MARGIN (MONTH)'</span>:     <span class="string">'TECH_GROSS_MARGIN'</span>,  <span class="comment"># Decimal (e.g. 0.82)</span>
+    <span class="string">'EBITDA MARGIN (MONTH)'</span>:         <span class="string">'EBITDA_MARGIN'</span>,
+    <span class="string">'CASH'</span>:                           <span class="string">'CASH_FIN_KPI'</span>,     <span class="comment"># Raw GBP!</span>
+    <span class="string">'INDICATIVE EV'</span>:                 <span class="string">'INDICATIVE_EV'</span>,    <span class="comment"># Raw GBP!</span>
+    <span class="string">'REVENUE CHURN'</span>:                 <span class="string">'REVENUE_CHURN'</span>,
+    <span class="string">'TIME TO VALUE (DAYS)'</span>:          <span class="string">'TIME_TO_VALUE'</span>,
+    <span class="comment"># ... plus S&amp;M EFFICIENCY, FREE CASH CONVERSION, YTD variants</span>
+}</code></pre>
+
+<div class="warn-box">
+<strong>Non-standard blocks that need special handling:</strong><br>
+<strong>INDICATIVE_EV:</strong> Single value at header+2 (no PY/Budget/Actual structure)<br>
+<strong>SM_EFFICIENCY:</strong> header+2 row is the YTD actual value (not a Budget row)<br>
+<strong>TIME_TO_VALUE:</strong> Standard block + "Excluding blocked" at header+4<br>
+<strong>RULE_OF_40:</strong> Component layout at rows 67-75 (ARR Growth + EBITDA Margin), not a standard block
+</div>
+
+<h4>4.2.2 P&amp;L Summary Column Layout</h4>
+<pre><code><span class="comment"># Col A = Label</span>
+<span class="comment"># Col B = Actual    Col C = Budget    Col D = Variance   Col E = PY   Col F = PY Var</span>
+<span class="comment"># Col G = YTD Act   Col H = YTD Bgt   Col I = YTD Bgt Var  Col J = YTD PY  Col K = YTD PY Var</span>
+<span class="comment">#</span>
+<span class="comment"># IMPORTANT: Col I (9) is YTD Budget VARIANCE, not Budget!</span>
+<span class="comment">#            Col K (11) is YTD PY VARIANCE, not PY!</span>
+<span class="comment"># Correct YTD picks: cols 7 (actual), 8 (budget), 10 (PY)</span>
+
+<span class="comment"># Row mapping:</span>
+<span class="comment"># R5-7 : Revenue by BL (ecom/ems/services)</span>
+<span class="comment"># R8   : Total Revenue</span>
+<span class="comment"># R13-15: Direct Contribution by BL</span>
+<span class="comment"># R16  : Total Direct Contribution</span>
+<span class="comment"># R17  : Total Overheads</span>
+<span class="comment"># R18  : EBITDA</span>
+<span class="comment"># R19  : Capitalised Development (= Capex)</span>
+<span class="comment"># R20  : EBITDA Less Capex</span></code></pre>
+
+<h4>4.2.3 Customer Numbers (Cross-tab)</h4>
+<pre><code><span class="comment"># Layout (Feb 2026 confirmed):</span>
+<span class="comment">#   R2: end-of-month dates across cols B..Y</span>
+<span class="comment">#   R3: first-of-month dates (use this for period)</span>
+<span class="comment">#   R4-8:   ACTUAL PROPERTIES (Ecom/EMS/Services/Total)</span>
+<span class="comment">#   R10-14: ACTUAL REVENUE (raw GBP, convert to GBPk)</span>
+<span class="comment">#   R16-20: AVE REVENUE PER CUSTOMER</span>
+<span class="comment">#   R22-26: BUDGET PROPERTIES</span>
+<span class="comment">#   R28-50: Geo breakdown (UK/Ireland/Italy/Spain-UAE)</span>
+<span class="comment">#</span>
+<span class="comment"># Extracts ALL populated month-columns (backfills to Aug 2025)</span></code></pre>
+
+<h4>4.2.4 Era 3 Main Parse Function</h4>
+<pre><code><span class="keyword">def</span> <span class="func">parse</span>(wb, file_name=None):
+    rows = []
+    period = parse_financial_kpis(wb, rows)        <span class="comment"># Authoritative Tech MRR source</span>
+
+    <span class="keyword">if</span> period <span class="keyword">is</span> None:
+        period = era2_parser.parse_pnl_detail(wb, rows)
+    <span class="keyword">else</span>:
+        era2_parser.parse_pnl_detail(wb, rows)
+
+    <span class="keyword">if</span> period <span class="keyword">is</span> None:
+        period = period_from_filename(file_name)
+    <span class="keyword">if</span> period <span class="keyword">is</span> None: <span class="keyword">return</span> rows
+
+    era2_parser.parse_business_line_pnls(wb, period, rows)
+    <span class="comment"># Only fall back to Guard Rails MRR if Financial KPIs didn't emit TECH_MRR</span>
+    <span class="keyword">if not</span> any(r[<span class="string">'kpi'</span>] == <span class="string">'TECH_MRR'</span> <span class="keyword">for</span> r <span class="keyword">in</span> rows):
+        era2_parser.parse_guard_rails(wb, period, rows)
+
+    era2_parser.parse_balance_sheet(wb, period, rows)
+    era2_parser.parse_cosmo_portal(wb, period, rows)
+    era2_parser.parse_headcount(wb, period, rows)
+    era2_parser.parse_gl_covenants(wb, period, rows)
+    era2_parser.parse_guard_rails_covenants(wb, period, rows)
+    parse_pnl_summary(wb, period, rows)
+    parse_cash_flow(wb, period, rows)
+    parse_revenue_waterfall(wb, period, rows)
+    parse_customer_numbers(wb, rows)
+    parse_kpi_data(wb, period, rows)
+    <span class="keyword">return</span> rows</code></pre>
+
+<h3>4.3 Era 2 Parser Key Functions</h3>
+
+<h4>Balance Sheet</h4>
+<pre><code><span class="comment"># Layout: Row labels in col A or B (NWC is in col A at R18!)</span>
+<span class="comment"># Col C = Actual, Col D = Budget, Col F = Prior Year</span>
+<span class="comment"># Key rows (scanned by label matching):</span>
+<span class="comment">#   "Cash on Hand" -> CASH_ON_HAND</span>
+<span class="comment">#   "Net Working Capital" -> NET_WORKING_CAPITAL (label in col A, not B!)</span>
+<span class="comment">#   "Net Debt" -> NET_DEBT</span>
+<span class="comment">#</span>
+<span class="comment"># Fix applied: checks BOTH col A and col B for labels:</span>
+label_b = str(ws.cell(r, 2).value or <span class="string">''</span>).strip().lower()
+label_a = str(ws.cell(r, 1).value or <span class="string">''</span>).strip().lower()
+label = label_b <span class="keyword">if</span> label_b <span class="keyword">else</span> label_a</code></pre>
+
+<h4>GL Covenants</h4>
+<pre><code><span class="comment"># Extracts: ARR covenant (actual/covenant/threshold/ratio),</span>
+<span class="comment">#           Interest Cover Ratio, Debt Service Ratio, Cash Min Balance</span>
+<span class="comment"># Layout: R3=ARR section header, then row-by-row label scanning</span></code></pre>
+
+<h4>Averroes Guard Rails</h4>
+<pre><code><span class="comment"># Five compliance blocks: Revenue, MRR, Contribution, EBITDA-less-Capex, Cash</span>
+<span class="comment"># Each block has: Covenant, Actual, Ratio triplet</span>
+<span class="comment"># KPIs: GR_REVENUE_ACTUAL_YTD, GR_REVENUE_COVENANT_YTD, GR_REVENUE_RATIO, etc.</span></code></pre>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">5.</span> Silver &amp; Gold Transform Logic</h2>
+<!-- ============================================================ -->
+
+<h3>5.1 <code>silver_gold_v2.py</code> &mdash; Unit Normalization</h3>
+
+<div class="crit-box">
+<strong>CRITICAL UNIT CONVENTION:</strong><br>
+Era 3 Tech MRR &amp; Services MRR are in <strong>raw GBP</strong> (e.g., 467,135). All other P&amp;L/BS values are in <strong>GBPk</strong> (thousands). The silver layer normalizes Era 3 MRR from raw GBP to GBPk by dividing by 1000.
+</div>
+
+<pre><code>RAW_POUND_KPIS = {<span class="string">"TECH_MRR"</span>, <span class="string">"LTM_TECH_MRR"</span>, <span class="string">"SERVICES_MRR"</span>, <span class="string">"LTM_SERVICES_MRR"</span>}
+
+<span class="keyword">def</span> <span class="func">normalize_unit</span>(kpi, value, era):
+    <span class="comment">"""Normalize MRR to GBPk (Era 3 source is raw GBP)."""</span>
+    <span class="keyword">if</span> kpi <span class="keyword">in</span> RAW_POUND_KPIS <span class="keyword">and</span> era == <span class="string">"era3"</span>:
+        <span class="keyword">return</span> value / 1000.0
+    <span class="keyword">return</span> value</code></pre>
+
+<h3>5.2 Derived Metrics in Silver</h3>
+<p><code>build_silver_from_parsed()</code> computes these derived KPIs per period:</p>
+<table>
+  <tr><th>Derived KPI</th><th>Formula</th><th>Business Line</th></tr>
+  <tr><td><code>ECOMMERCE_MRR</code></td><td>Success Fees + Payment Fees</td><td>ecommerce</td></tr>
+  <tr><td><code>ECOMMERCE_ARR</code></td><td>Ecommerce MRR &times; 12</td><td>ecommerce</td></tr>
+  <tr><td><code>EMS_MRR</code></td><td>Tech MRR &minus; Ecommerce MRR</td><td>ems</td></tr>
+  <tr><td><code>EMS_ARR</code></td><td>EMS MRR &times; 12</td><td>ems</td></tr>
+  <tr><td><code>TECH_ARR</code></td><td>Tech MRR &times; 12</td><td>none</td></tr>
+  <tr><td><code>SERVICES_ARR</code></td><td>Services MRR &times; 12</td><td>services</td></tr>
+</table>
+
+<h3>5.3 Gold Pivot &mdash; <code>pivot_to_gold()</code></h3>
+<p>Pivots long silver into wide gold (one row per portco &times; period). Key behaviors:</p>
+
+<ul>
+<li><strong>FY Calculation:</strong> FY runs Nov&ndash;Oct. Month &ge; 11 &rarr; next FY. <code>fy_month_num</code> = month&minus;10 for Nov+, month+2 for Jan&ndash;Oct.</li>
+<li><strong>CASH_FIN_KPI conversion:</strong> <code>cash_balance_budget</code> and <code>cash_balance_prior_month</code> are converted from raw GBP to GBPk via <code>_div_k()</code>.</li>
+<li><strong>Indicative EV:</strong> Also converted to GBPk via <code>_div_k()</code>.</li>
+<li><strong>YTD Cumsum:</strong> EBITDA YTD is filled via cumulative sum within each FY, but only where P&amp;L Summary didn't already provide a value (uses <code>fillna</code> not overwrite).</li>
+<li><strong>Revenue growth %:</strong> Derived as <code>(actual / prior_year - 1) * 100</code>.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">6.</span> Cloud Function Pipeline</h2>
+<!-- ============================================================ -->
+
+<h3>6.1 <code>functions/ingest/main.py</code> &mdash; Complete Flow</h3>
+
+<pre><code>@functions_framework.cloud_event
+<span class="keyword">def</span> <span class="func">process_file</span>(cloud_event):
+    <span class="comment"># 1. Extract portco_id from GCS path (first path segment)</span>
+    <span class="comment"># 2. Filter: only process files with "Management Accounts" or "MAfile" in name</span>
+    <span class="comment"># 3. Download blob bytes from GCS</span>
+
+    <span class="comment"># 4. PARSE</span>
+    parsed_rows = parse_alpha_ma(file_bytes, basename)
+
+    <span class="comment"># 5. BRONZE - Idempotent: DELETE by file_name, then INSERT</span>
+    write_bronze(parsed_rows, portco_id, basename)
+
+    <span class="comment"># 6. SILVER - build_silver_from_parsed() + write</span>
+    silver_df = build_silver_from_parsed(parsed_rows, source_file=basename)
+    write_silver(silver_df, portco_id, basename)  <span class="comment"># DELETE by source_file, then INSERT</span>
+
+    <span class="comment"># 7. GOLD - pivot_to_gold() + write</span>
+    gold_df = pivot_to_gold(silver_df, portco_id=portco_id)
+    write_gold(gold_df, portco_id)  <span class="comment"># DELETE by portco_id+period, then INSERT</span></code></pre>
+
+<h3>6.2 Idempotency Design</h3>
+<table>
+  <tr><th>Layer</th><th>Delete Strategy</th><th>Write Mode</th></tr>
+  <tr><td>Bronze</td><td>DELETE WHERE <code>file_name = @f</code></td><td>WRITE_APPEND</td></tr>
+  <tr><td>Silver</td><td>DELETE WHERE <code>portco_id = @p AND source_file = @f</code><br>+ DELETE derived rows for covered periods</td><td>WRITE_APPEND</td></tr>
+  <tr><td>Gold</td><td>DELETE WHERE <code>portco_id = @p AND period IN UNNEST(@periods)</code></td><td>WRITE_APPEND</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">7.</span> Dashboard Architecture</h2>
+<!-- ============================================================ -->
+
+<h3>7.1 Data Loading Priority</h3>
+<pre><code><span class="keyword">def</span> <span class="func">load_data</span>():
+    <span class="comment"># Priority 1: BigQuery gold.kpi_monthly_v2 (live)</span>
+    <span class="comment"># Priority 2: GCS bucket MA files (parse on the fly)</span>
+    <span class="comment"># Priority 3: Local CSV fallback (static)</span></code></pre>
+
+<h3>7.2 Unit Conventions in Gold (Dashboard Display)</h3>
+
+<div class="crit-box">
+<strong>This is the #1 source of display bugs.</strong> Gold stores values in two different unit systems. Every <code>st.metric()</code> call must use the correct formatter.
+</div>
+
+<table>
+  <tr><th>Unit in Gold</th><th>Formatter</th><th>Fields</th></tr>
+  <tr>
+    <td><strong>GBPk</strong> (thousands)</td>
+    <td><code>fmt_gbp_k(val)</code></td>
+    <td>revenue_total_actual, ebitda_actual, cash_balance, net_working_capital, capex, direct_costs_*, contribution_*, total_overheads, gross_payroll, indicative_ev, ebitda_less_capex, cash_burn_monthly, cash_balance_budget/prior_month, nwc_budget, ebitda_ytd_*</td>
+  </tr>
+  <tr>
+    <td><strong>Raw GBP</strong></td>
+    <td><code>fmt_gbp(val)</code></td>
+    <td>tech_mrr_actual, services_mrr_actual, tech_arr, ecommerce_arr, services_arr, arpc_actual, revenue_per_employee, sm_cost_ytd, tcv_ytd, cac (computed), ltv (computed)</td>
+  </tr>
+  <tr>
+    <td><strong>Percentage</strong></td>
+    <td><code>fmt_pct(val)</code></td>
+    <td>tech_gross_margin_pct, ebitda_margin_pct, contribution_margin_pct, revenue_yoy_growth_pct, free_cash_conversion_*</td>
+  </tr>
+  <tr>
+    <td><strong>Decimal (auto-converted to %)</strong></td>
+    <td><code>_maybe_pct()</code> in harmonize</td>
+    <td>Margins from Financial KPIs arrive as decimals (0.82 = 82%). The harmonize function detects [-1,1] range and multiplies by 100.</td>
+  </tr>
+  <tr>
+    <td><strong>Ratio / Count</strong></td>
+    <td><code>fmt_num()</code> or custom</td>
+    <td>properties_live, headcount, rule_of_40, sm_efficiency (0.48x), ltv_cac_ratio</td>
+  </tr>
+</table>
+
+<h3>7.3 Formatter Functions</h3>
+<pre><code><span class="keyword">def</span> <span class="func">fmt_gbp_k</span>(val, decimals=2):
+    <span class="comment">"""Input is in GBPk. 880 (GBPk) -> 'GBP0.88 M', 50 (GBPk) -> 'GBP50 k'"""</span>
+    raw_val = val * 1000              <span class="comment"># convert to raw GBP</span>
+    abs_val = abs(raw_val)
+    sign = <span class="string">"-"</span> <span class="keyword">if</span> raw_val &lt; 0 <span class="keyword">else</span> <span class="string">""</span>
+    <span class="keyword">if</span> abs_val >= 100_000:            <span class="comment"># >= GBP100k -> show as M</span>
+        <span class="keyword">return</span> f<span class="string">"{sign}GBP{abs_val / 1_000_000:,.{decimals}f} M"</span>
+    <span class="keyword">elif</span> abs_val >= 1_000:            <span class="comment"># >= GBP1k -> show as k</span>
+        <span class="keyword">return</span> f<span class="string">"{sign}GBP{abs_val / 1_000:,.0f} k"</span>
+
+<span class="keyword">def</span> <span class="func">fmt_gbp</span>(val, decimals=2):
+    <span class="comment">"""Input is in raw GBP. 467135 -> 'GBP467 k', 5605620 -> 'GBP5.61 M'"""</span>
+    abs_val = abs(val)
+    sign = <span class="string">"-"</span> <span class="keyword">if</span> val &lt; 0 <span class="keyword">else</span> <span class="string">""</span>
+    <span class="keyword">if</span> abs_val >= 1_000_000:          <span class="comment"># >= GBP1M -> show as M</span>
+        <span class="keyword">return</span> f<span class="string">"{sign}GBP{abs_val / 1_000_000:,.{decimals}f} M"</span>
+    <span class="keyword">elif</span> abs_val >= 10_000:           <span class="comment"># >= GBP10k -> show as k</span>
+        <span class="keyword">return</span> f<span class="string">"{sign}GBP{abs_val / 1_000:,.0f} k"</span></code></pre>
+
+<h3>7.4 SaaS Unit Economics (Computed in Dashboard)</h3>
+<pre><code><span class="comment"># These are derived in harmonize_v2_columns(), NOT in gold:</span>
+
+<span class="comment"># 1. Annualize YTD S&amp;M cost -> monthly</span>
+sm_annual = df[<span class="string">"sm_cost_ytd"</span>] / fy_months_elapsed * 12
+sm_monthly = sm_annual / 12
+
+<span class="comment"># 2. LTV = (Monthly ARPC x Gross Margin) / Monthly Churn</span>
+df[<span class="string">"ltv"</span>] = (arpc_m * gm) / churn_monthly.replace(0, np.nan)
+
+<span class="comment"># 3. CAC = Monthly S&amp;M / Net New Properties per month</span>
+new_properties = df[<span class="string">"properties_live"</span>].diff()
+df[<span class="string">"cac"</span>] = sm_monthly / new_properties.replace(0, np.nan)
+
+<span class="comment"># 4. CAC Payback (months) = CAC / (ARPC x Gross Margin)</span>
+df[<span class="string">"cac_payback_months"</span>] = df[<span class="string">"cac"</span>] / monthly_value.replace(0, np.nan)
+
+<span class="comment"># 5. LTV:CAC Ratio</span>
+df[<span class="string">"ltv_cac_ratio"</span>] = df[<span class="string">"ltv"</span>] / df[<span class="string">"cac"</span>].replace(0, np.nan)</code></pre>
+
+<h3>7.5 Cash Bridge (Waterfall Chart)</h3>
+<pre><code><span class="comment"># All values in GBPk (same unit as gold table)</span>
+opening_cash = row.get(<span class="string">'cash_balance_prior_month'</span>)   <span class="comment"># GBPk</span>
+closing_cash = row.get(<span class="string">'cash_balance'</span>)              <span class="comment"># GBPk</span>
+ebitda_cf    = row.get(<span class="string">'ebitda_actual'</span>)             <span class="comment"># GBPk</span>
+capex_cf     = row.get(<span class="string">'capex'</span>)                     <span class="comment"># GBPk (negative)</span>
+
+<span class="comment"># Residual ensures reconciliation: Opening + EBITDA + Capex + Other = Closing</span>
+other_items = (closing_cash - opening_cash) - ebitda_cf - capex_cf
+
+cash_values = [opening_cash, ebitda_cf, capex_cf, other_items, closing_cash]
+<span class="comment"># All formatted with fmt_gbp_k()</span></code></pre>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">8.</span> BigQuery Schema (V2)</h2>
+<!-- ============================================================ -->
+
+<h3>8.1 Silver Table</h3>
+<pre><code>CREATE TABLE `averroes-portfolio-intel.silver.kpi_long` (
+  portco_id      STRING   NOT NULL,
+  period         DATE     NOT NULL,           <span class="comment">-- first-of-month</span>
+  kpi            STRING   NOT NULL,           <span class="comment">-- canonical KPI name (see schema.py)</span>
+  value          FLOAT64,
+  value_type     STRING,                      <span class="comment">-- 'actual'|'budget'|'prior_year'|'ytd_actual'|'ytd_budget'</span>
+  business_line  STRING,                      <span class="comment">-- 'ecommerce'|'ems'|'services'|'total'|NULL</span>
+  era            STRING,                      <span class="comment">-- 'era1'|'era2'|'era3'</span>
+  source_file    STRING,
+  source_sheet   STRING,
+  source_cell    STRING,
+  ingested_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+)
+PARTITION BY DATE_TRUNC(period, MONTH)
+CLUSTER BY portco_id, kpi;</code></pre>
+
+<h3>8.2 Gold Table (Abbreviated &mdash; ~160 columns)</h3>
+<pre><code>CREATE TABLE `averroes-portfolio-intel.gold.kpi_monthly_v2` (
+  portco_id STRING NOT NULL,  period DATE NOT NULL,
+  fy STRING,  fy_quarter STRING,  fy_month_num INT64,
+
+  <span class="comment">-- Tech MRR (GBPk after normalization)</span>
+  tech_mrr_actual FLOAT64,  tech_mrr_budget FLOAT64,  tech_mrr_prior_year FLOAT64,
+  tech_mrr_ytd_actual FLOAT64,
+
+  <span class="comment">-- Revenue by BL (GBPk)</span>
+  revenue_ecommerce_actual FLOAT64,  revenue_ems_actual FLOAT64,
+  revenue_services_actual FLOAT64,  revenue_total_actual FLOAT64,
+  <span class="comment">-- ... budget, prior_year, ytd variants for each</span>
+
+  <span class="comment">-- P&amp;L (GBPk)</span>
+  ebitda_actual FLOAT64,  ebitda_budget FLOAT64,  total_overheads FLOAT64,
+  <span class="comment">-- ... contribution, direct costs by BL</span>
+
+  <span class="comment">-- Balance Sheet (GBPk)</span>
+  cash_balance FLOAT64,  net_working_capital FLOAT64,  net_debt FLOAT64,
+  capex FLOAT64,
+
+  <span class="comment">-- Financial KPIs (decimal/raw as noted)</span>
+  arpc_actual FLOAT64,  tech_gross_margin_pct FLOAT64,
+  ebitda_margin_pct FLOAT64,  rule_of_40 FLOAT64,
+  sm_efficiency FLOAT64,  indicative_ev FLOAT64,
+  sm_cost_ytd FLOAT64,  tcv_ytd FLOAT64,
+
+  <span class="comment">-- GL Covenants + Guard Rails (23 fields)</span>
+  gl_arr_actual FLOAT64,  gl_arr_covenant FLOAT64,  gl_arr_ratio FLOAT64,
+  gr_revenue_actual_ytd FLOAT64,  gr_revenue_covenant_ytd FLOAT64,
+  <span class="comment">-- ... 18 more covenant fields</span>
+
+  <span class="comment">-- Revenue Waterfall (9 fields)</span>
+  wf_revenue_start FLOAT64,  wf_one_off_prev FLOAT64,
+  <span class="comment">-- ... 7 more waterfall fields</span>
+
+  <span class="comment">-- Metadata</span>
+  currency STRING,  data_source STRING,  era STRING,
+  computed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+)
+PARTITION BY DATE_TRUNC(period, MONTH)
+CLUSTER BY portco_id;</code></pre>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">9.</span> Deployment &amp; Operations</h2>
+<!-- ============================================================ -->
+
+<h3>9.1 Full Deployment (<code>deploy/deploy_v2.py</code>)</h3>
+<pre><code><span class="comment"># 5-step automated deployment (no gcloud CLI needed):</span>
+
+<span class="comment"># Step 1: Apply BQ v2 schemas</span>
+python3 deploy/deploy_v2.py --key /path/to/key.json
+
+<span class="comment"># Or with env var:</span>
+export GOOGLE_APPLICATION_CREDENTIALS=/Users/ishuratna/Downloads/averroes-portfolio-intel-a35a3d912d2c.json
+python3 deploy/deploy_v2.py
+
+<span class="comment"># Flags:</span>
+<span class="comment">#   --key PATH        : Path to GCP SA JSON key</span>
+<span class="comment">#   --ma-dir PATH     : Directory with MA xlsx files (default: raw_ma_files/)</span>
+<span class="comment">#   --skip-upload     : Skip GCS upload (if files already there)</span>
+<span class="comment">#   --skip-schema     : Skip BQ schema creation (if already done)</span></code></pre>
+
+<p>The 5 steps:</p>
+<ol>
+  <li><strong>Apply schemas:</strong> Executes <code>bq_schemas/silver_gold_v2.sql</code> (creates silver.kpi_long + gold.kpi_monthly_v2 + 3 views)</li>
+  <li><strong>Backfill:</strong> Parses all 16 MA files locally, outputs <code>dashboard/silver_kpi_long.csv</code> and <code>dashboard/gold_kpi_monthly.csv</code></li>
+  <li><strong>Load BQ:</strong> Uploads CSVs into BigQuery (idempotent DELETE then INSERT per portco_id)</li>
+  <li><strong>Upload GCS:</strong> Copies raw MA files to <code>gs://averroes-portfolio-intel-portfolio-data/portco-alpha/ma-files/</code></li>
+  <li><strong>Sanity check:</strong> Runs SELECT query showing revenue, ARR, covenant ratios by month</li>
+</ol>
+
+<h3>9.2 Cloud Function Redeployment</h3>
+<pre><code>gcloud functions deploy portfolio-data-ingest \
+  --gen2 --runtime=python311 --region=europe-west2 \
+  --source=functions/ingest --entry-point=process_file \
+  --trigger-event-filters='type=google.cloud.storage.object.v1.finalized' \
+  --trigger-event-filters='bucket=averroes-portfolio-intel-portfolio-data' \
+  --memory=512MB --timeout=300</code></pre>
+
+<h3>9.3 Local Dashboard</h3>
+<pre><code><span class="comment"># Run from project root:</span>
+streamlit run pe_app.py
+
+<span class="comment"># Requires .streamlit/secrets.toml with gcp_service_account JSON</span>
+<span class="comment"># OR set GOOGLE_APPLICATION_CREDENTIALS env var</span></code></pre>
+
+<h3>9.4 Manual Ingest Trigger (Local)</h3>
+<pre><code><span class="comment"># Upload a new MA file to GCS to trigger the Cloud Function:</span>
+gsutil cp "raw_ma_files/4. FY26 Management Accounts - February 26.xlsx" \
+  gs://averroes-portfolio-intel-portfolio-data/portco-alpha/ma-files/</code></pre>
+
+<h3>9.5 Git Push (from local machine)</h3>
+<pre><code>cd /Users/ishuratna/.gemini/antigravity/scratch/averroes-portfolio-intel
+git push origin main</code></pre>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">10.</span> KPI Taxonomy &amp; Anomaly Rules</h2>
+<!-- ============================================================ -->
+
+<h3>10.1 Canonical KPI Categories</h3>
+<table>
+  <tr><th>Category</th><th>KPIs</th><th>Unit</th><th>Benchmark</th></tr>
+  <tr><td>Revenue</td><td>ARR, Revenue, New ARR, Tech MRR, Services MRR, Expansion/Churn ARR</td><td>GBP_k</td><td>Growth-dependent</td></tr>
+  <tr><td>Retention</td><td>NRR, GRR, Logo Churn Rate</td><td>%, %,  %</td><td>&ge;110%, &ge;90%, &lt;5%</td></tr>
+  <tr><td>Unit Economics</td><td>Gross Margin, CAC, CAC Payback, LTV:CAC</td><td>%, GBP, months, x</td><td>&gt;70%, varies, &lt;12mo, &gt;3x</td></tr>
+  <tr><td>Efficiency</td><td>Net Burn, Runway, Rule of 40, S&amp;M Efficiency, ARPC, EBITDA Margin</td><td>GBP, months, %, x, GBP, %</td><td>varies, &gt;18mo, &gt;40%, &gt;1.0x</td></tr>
+  <tr><td>GTM</td><td>Pipeline Coverage, Quota Attainment, Win Rate</td><td>x, %, %</td><td>&gt;3x, &gt;70%, &gt;30%</td></tr>
+  <tr><td>People</td><td>Total FTE, ARR per FTE, eNPS, Payroll Costs</td><td>count, GBP, score, GBP</td><td>varies, &gt;150k, &gt;30</td></tr>
+</table>
+
+<h3>10.2 Red-Flag Anomaly Rules</h3>
+<table>
+  <tr><th>Rule</th><th>Condition</th><th>Severity</th></tr>
+  <tr><td>Cash Runway</td><td>Runway &lt; 12 months (&lt;6 = CRITICAL)</td><td style="color:#ef4444">RED</td></tr>
+  <tr><td>Tech Gross Margin</td><td>Below 75% (SaaS benchmark 80%+)</td><td style="color:#f59e0b">AMBER</td></tr>
+  <tr><td>Revenue Churn</td><td>Monthly churn &gt; 5%</td><td style="color:#ef4444">RED</td></tr>
+  <tr><td>Rule of 40</td><td>Below 20% (3+ months)</td><td style="color:#f59e0b">AMBER</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">11.</span> Data Model: Gold Column Reference</h2>
+<!-- ============================================================ -->
+
+<h3>11.1 Complete Gold Column Groups</h3>
+
+<table>
+  <tr><th>Group</th><th>Columns</th><th>Unit</th><th>Source</th></tr>
+  <tr><td>MRR/ARR</td><td>tech_mrr_actual/budget/prior_year/ytd_actual, services_mrr_*, ecommerce_mrr_actual, ems_mrr_actual, tech_arr, ecommerce_arr, ems_arr, services_arr</td><td>GBPk</td><td>Financial KPIs + derived</td></tr>
+  <tr><td>Revenue</td><td>revenue_{ecommerce,ems,services,total}_{actual,budget,prior_year}, revenue_total_ytd_{actual,budget}, revenue_ecom_{success,setup,payment}_fees, revenue_ems_{subscription,setup,hardware}</td><td>GBPk</td><td>P&amp;L Detail / Summary</td></tr>
+  <tr><td>Contribution</td><td>contribution_{ecommerce,ems,services,total}_{actual,budget,py}, contribution_total_ytd_{actual,budget}</td><td>GBPk</td><td>P&amp;L Summary</td></tr>
+  <tr><td>Costs</td><td>direct_costs_{ecommerce,ems,services}_{actual,budget}, total_overheads{,_budget,_py}</td><td>GBPk</td><td>P&amp;L Detail / Summary</td></tr>
+  <tr><td>EBITDA</td><td>ebitda_{actual,budget,prior_year}, ebitda_less_capex{,_budget}, ebitda_ytd_{actual,budget,py}</td><td>GBPk</td><td>P&amp;L Summary</td></tr>
+  <tr><td>Balance Sheet</td><td>cash_balance, cash_balance_bs_{budget,prior}, cash_balance_{budget,prior_month}, net_working_capital, nwc_{budget,prior_month}, net_debt, cash_burn_monthly, capex{,_budget}</td><td>GBPk</td><td>Balance Sheet + Financial KPIs</td></tr>
+  <tr><td>Headcount</td><td>total_headcount, headcount_{budget,prior_year,ecommerce,ems,services,central}, gross_payroll{,_budget}, revenue_per_employee</td><td>count / GBPk / GBP</td><td>Headcount sheet</td></tr>
+  <tr><td>Modules</td><td>modules_live_{total,ecommerce,ems,services}, modules_pipeline</td><td>count</td><td>Customer Numbers</td></tr>
+  <tr><td>Financial KPIs</td><td>arpc_actual/budget/ytd_*, tech_gross_margin_*pct, ebitda_margin_*pct, free_cash_conversion_*, indicative_ev, sm_efficiency, sm_cost_ytd, tcv_ytd, rule_of_40, revenue_churn_pct/target, time_to_value_*, ytd_revenue_growth_*</td><td>mixed</td><td>Financial KPIs sheet</td></tr>
+  <tr><td>GL Covenants</td><td>gl_arr_{actual,covenant,ratio,threshold}, gl_interest_cover_ratio, gl_debt_service_ratio, gl_cash_min_balance</td><td>GBP / ratio</td><td>GL Covenants sheet</td></tr>
+  <tr><td>Guard Rails</td><td>gr_{revenue,mrr,contribution,ebitda_capex,cash}_{actual,covenant,ratio}_*</td><td>GBP / ratio</td><td>Averroes Guard Rails sheet</td></tr>
+  <tr><td>Waterfall</td><td>wf_revenue_start, wf_one_off_{prev,ytd}, wf_recurring_growth, wf_arr_ytg, wf_weighted_pipeline, wf_budget_assumptions, wf_revenue_gap, wf_revenue_end</td><td>GBPk</td><td>Revenue Waterfall sheet</td></tr>
+  <tr><td>Metadata</td><td>fy, fy_quarter, fy_month_num, currency, data_source, era, computed_at</td><td>string / int / ts</td><td>Computed</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">12.</span> Dependencies</h2>
+<!-- ============================================================ -->
+
+<h3>12.1 Cloud Function (<code>functions/ingest/requirements.txt</code>)</h3>
+<pre><code>functions-framework==3.4.0
+google-cloud-bigquery==3.14.0
+google-cloud-storage==2.14.0
+pandas==2.1.4
+openpyxl==3.1.2
+google-generativeai==0.3.2
+thefuzz==0.20.0
+PyYAML==6.0.1</code></pre>
+
+<h3>12.2 Dashboard (root <code>requirements.txt</code>)</h3>
+<pre><code>streamlit
+pandas
+numpy
+plotly
+google-cloud-bigquery
+pandas-gbq
+google-auth</code></pre>
+
+<h3>12.3 Deployment (<code>deploy/requirements.txt</code>)</h3>
+<pre><code>google-cloud-bigquery
+google-cloud-storage
+pandas
+pyarrow
+openpyxl</code></pre>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">13.</span> Known Issues &amp; Gotchas</h2>
+<!-- ============================================================ -->
+
+<div class="warn-box">
+<strong>Parser Brittleness:</strong> Parsers use hardcoded row/column positions (e.g., R18 for NWC, R6C6 for TCV). If the portco changes their MA template layout, parsers will silently extract wrong values. Always verify by comparing dashboard values against the source Excel.
+</div>
+
+<div class="warn-box">
+<strong>P&amp;L Summary Trailing Space:</strong> The sheet name is <code>'P&amp;L Summary '</code> (with trailing space) in some files. The <code>find_sheet()</code> helper handles this by stripping whitespace, but direct <code>wb['P&amp;L Summary']</code> lookups will fail.
+</div>
+
+<div class="warn-box">
+<strong>Balance Sheet NWC Label:</strong> Net Working Capital at R18 has its label in <strong>column A</strong>, not column B like all other BS labels. The parser checks both columns.
+</div>
+
+<div class="info-box">
+<strong>Financial KPIs Block Exceptions:</strong> Three blocks deviate from the standard PY/Budget/Actual pattern: Indicative EV (single value), S&amp;M Efficiency (YTD-only), and Time to Value (extra "excl. blocked" row at +4). These have explicit <code>if kpi == ...</code> handlers.
+</div>
+
+<div class="info-box">
+<strong>Fallback CSV Drift:</strong> The local CSV fallback at <code>dashboard/gold_kpi_monthly.csv</code> is only refreshed during <code>deploy_v2.py</code> runs. If new data is ingested via the Cloud Function, the CSV falls behind. The BQ path should always be preferred.
+</div>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">14.</span> Glossary</h2>
+<!-- ============================================================ -->
+
+<table>
+  <tr><th>Term</th><th>Definition</th></tr>
+  <tr><td>MA</td><td>Management Accounts &mdash; monthly Excel file from a portfolio company</td></tr>
+  <tr><td>Portco</td><td>Portfolio company (currently only <code>portco-alpha</code> is live)</td></tr>
+  <tr><td>BL</td><td>Business Line &mdash; Ecommerce, EMS, or Services for Alpha</td></tr>
+  <tr><td>Era 1/2/3</td><td>Tiers of MA file completeness (see Section 3)</td></tr>
+  <tr><td>Medallion</td><td>Bronze (raw) &rarr; Silver (normalized) &rarr; Gold (reporting)</td></tr>
+  <tr><td>GBPk</td><td>British Pounds in thousands (e.g., 880 = GBP880,000)</td></tr>
+  <tr><td>ARR/MRR/NRR/GRR</td><td>Annual/Monthly Recurring Revenue; Net/Gross Revenue Retention</td></tr>
+  <tr><td>ARPC</td><td>Average Revenue Per Customer</td></tr>
+  <tr><td>CAC</td><td>Customer Acquisition Cost = Monthly S&amp;M / Net New Properties</td></tr>
+  <tr><td>LTV</td><td>Lifetime Value = (ARPC &times; GM) / Monthly Churn</td></tr>
+  <tr><td>FY</td><td>Financial Year running Nov&ndash;Oct (FY26 = Nov 2025 &ndash; Oct 2026)</td></tr>
+  <tr><td>YTD</td><td>Year-to-Date (cumulative within current FY)</td></tr>
+  <tr><td>RAG</td><td>Red / Amber / Green health indicator</td></tr>
+  <tr><td>IC/GP/LP</td><td>Investment Committee / General Partner / Limited Partner</td></tr>
+  <tr><td>Rule of 40</td><td>Revenue Growth % + EBITDA Margin % (SaaS efficiency benchmark)</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">15.</span> Quick-Start for New Developer / AI</h2>
+<!-- ============================================================ -->
+
+<div class="info-box">
+<strong>To resume development on this project, follow these steps:</strong>
+</div>
+
+<ol>
+  <li><strong>Clone:</strong> <code>git clone https://github.com/averroescapital/averroes-intel.git</code></li>
+  <li><strong>Install deps:</strong> <code>pip install -r requirements.txt</code> and <code>pip install openpyxl</code></li>
+  <li><strong>Set GCP credentials:</strong> <code>export GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json</code></li>
+  <li><strong>Run dashboard locally:</strong> <code>streamlit run pe_app.py</code></li>
+  <li><strong>To backfill/deploy:</strong> <code>python3 deploy/deploy_v2.py --key /path/to/key.json</code></li>
+  <li><strong>To add a new MA file:</strong> Place in <code>raw_ma_files/</code>, run deploy, or upload directly to GCS</li>
+  <li><strong>To modify parser:</strong> Edit <code>functions/ingest/parsers/era3_parser.py</code> (canonical), then backfill</li>
+  <li><strong>To add new gold columns:</strong> Add to <code>bq_schemas/silver_gold_v2.sql</code> + <code>silver_gold_v2.py:pivot_to_gold()</code> + <code>pe_app.py:harmonize_v2_columns()</code></li>
+</ol>
+
+<p style="margin-top: 40px; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--border); padding-top: 16px;">
+  Averroes Capital &mdash; Portfolio Intelligence Platform &mdash; System Artifact v2.0.4<br>
+  Generated April 17, 2026 | Confidential
+</p>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'neutral', flowchart: { htmlLabels: true, curve: 'basis' } });
+</script>
+</body>
+</html>
