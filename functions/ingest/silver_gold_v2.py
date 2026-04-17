@@ -113,24 +113,8 @@ def build_silver_from_parsed(parsed_rows: list, source_file: str) -> pd.DataFram
                                  "source_file": "derived", "source_sheet": "derived",
                                  "source_cell": "TECH_MRR * 12"})
 
-        # Services ARR = Services MRR * 12
-        # Silver stores all MRR values in £k (normalize_unit converts era3 raw £ → £k).
-        # For era1/era2, SERVICES_MRR doesn't exist in the MA files.
-        # Derive it from REVENUE_SERVICES (£k) using the observed ratio (0.765)
-        # from era3 months where both are available.
-        # MRR captures recurring revenue only; ~76.5% of total services revenue.
-        SERVICES_MRR_TO_REVENUE_RATIO = 0.765
+        # Services ARR = Services MRR * 12 (only when SERVICES_MRR exists in source data)
         services_mrr = get("SERVICES_MRR", None)
-        if services_mrr is None:
-            # Fallback: estimate from services revenue (already in £k)
-            services_rev_k = get("REVENUE_SERVICES", "services")
-            if services_rev_k is not None:
-                services_mrr = services_rev_k * SERVICES_MRR_TO_REVENUE_RATIO
-                derived_rows.append({"period": period, "kpi": "SERVICES_MRR",
-                                     "value": services_mrr, "value_type": "actual",
-                                     "business_line": "services", "era": era_for_period,
-                                     "source_file": "derived", "source_sheet": "derived",
-                                     "source_cell": f"REVENUE_SERVICES * {SERVICES_MRR_TO_REVENUE_RATIO}"})
         if services_mrr is not None:
             derived_rows.append({"period": period, "kpi": "SERVICES_ARR",
                                  "value": services_mrr * 12, "value_type": "actual",
