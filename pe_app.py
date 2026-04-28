@@ -11,7 +11,7 @@ import sys
 # PAGE CONFIG
 # ============================================================
 st.set_page_config(
-    page_title="Averroes Capital - Portfolio KPI Dashboard",
+    page_title="Averroes Capital — PortCo KPI Tracker",
     layout="wide",
     page_icon="📊"
 )
@@ -22,67 +22,145 @@ APP_VERSION = "2.0.4 - Fix unit formatting (£k vs raw £)"
 PROJECT_ID = "averroes-portfolio-intel"
 
 # ============================================================
-# DESIGN SYSTEM - Executive Theme (Navy & White)
+# DESIGN SYSTEM — Clean White + Averroes Blue
 # ============================================================
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+    /* ---- GLOBAL ---- */
     html, body, [data-testid="stAppViewContainer"] {
-        background-color: #fcfcfc !important;
-        font-family: 'Inter', sans-serif;
+        background-color: #ffffff !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
+    /* ---- SIDEBAR ---- */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%) !important;
+    }
+    [data-testid="stSidebar"] * {
+        color: #e2e8f0 !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stMarkdown"] p,
+    [data-testid="stSidebar"] [data-testid="stMarkdown"] span {
+        color: #e2e8f0 !important;
+    }
+    [data-testid="stSidebar"] .stSelectbox label,
+    [data-testid="stSidebar"] .stRadio label {
+        color: #94a3b8 !important;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+    [data-testid="stSidebar"] hr {
+        border-color: rgba(255,255,255,0.1) !important;
+    }
+    [data-testid="stSidebar"] .stButton > button {
+        background-color: rgba(14, 165, 233, 0.15) !important;
+        color: #7dd3fc !important;
+        border: 1px solid rgba(14, 165, 233, 0.3) !important;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    [data-testid="stSidebar"] .stButton > button:hover {
+        background-color: rgba(14, 165, 233, 0.3) !important;
+        border-color: #0ea5e9 !important;
+    }
+
+    /* ---- HEADERS ---- */
     .main-header {
-        font-size: 2.2rem;
+        font-size: 1.85rem;
         font-weight: 700;
         color: #0f172a;
         margin-bottom: 0px;
+        letter-spacing: -0.02em;
     }
     .sub-header {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         color: #64748b;
-        margin-bottom: 30px;
+        margin-bottom: 28px;
+        font-weight: 400;
     }
     .kpi-section-title {
-        font-size: 1.1rem;
+        font-size: 1.05rem;
         font-weight: 600;
         color: #0f172a;
-        border-bottom: 2px solid #0ea5e9;
-        padding-bottom: 8px;
-        margin-top: 20px;
-        margin-bottom: 25px;
+        border-left: 3px solid #0ea5e9;
+        padding-left: 12px;
+        padding-bottom: 0;
+        margin-top: 32px;
+        margin-bottom: 20px;
+        border-bottom: none;
     }
 
+    /* ---- KPI CARDS ---- */
     div[data-testid="stMetric"] {
         background-color: #ffffff;
         border: 1px solid #e2e8f0;
         padding: 20px !important;
-        border-radius: 4px;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        transition: box-shadow 0.2s;
+    }
+    div[data-testid="stMetric"]:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
     [data-testid="stMetricValue"] {
         color: #0f172a !important;
-        font-size: 2rem !important;
+        font-size: 1.75rem !important;
         font-weight: 700 !important;
+        letter-spacing: -0.01em;
     }
     [data-testid="stMetricLabel"] {
-        font-size: 0.75rem !important;
+        font-size: 0.7rem !important;
         font-weight: 600 !important;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.06em;
         color: #64748b !important;
     }
 
+    /* ---- STATUS BADGES ---- */
     .status-badge {
-        padding: 2px 8px;
-        border-radius: 12px;
+        padding: 3px 10px;
+        border-radius: 20px;
         font-size: 0.7rem;
-        font-weight: 700;
+        font-weight: 600;
         text-transform: uppercase;
+        letter-spacing: 0.03em;
     }
     .status-on-track { background-color: #dcfce7; color: #166534; }
     .status-watch { background-color: #fef9c3; color: #854d0e; }
     .status-below { background-color: #fee2e2; color: #991b1b; }
+
+    /* ---- EXPANDER ---- */
+    [data-testid="stExpander"] {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    /* ---- TABS ---- */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    .stTabs [data-baseweb="tab"] {
+        padding: 10px 24px;
+        font-weight: 500;
+        color: #64748b;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #0ea5e9 !important;
+        border-bottom: 2px solid #0ea5e9;
+    }
+
+    /* ---- DIVIDERS ---- */
+    hr {
+        border: none;
+        border-top: 1px solid #e2e8f0;
+        margin: 24px 0;
+    }
 
     /* ---- PRINT STYLES ---- */
     @media print {
@@ -638,8 +716,16 @@ if not df_raw.empty:
 # ============================================================
 # SIDEBAR
 # ============================================================
-st.sidebar.title("📊 Averroes Capital")
-st.sidebar.markdown("Portfolio Intelligence Platform")
+st.sidebar.markdown("""
+<div style="text-align:center; padding: 8px 0 16px 0;">
+    <div style="font-size:1.3rem; font-weight:700; color:#ffffff; letter-spacing:-0.02em;">
+        Averroes Capital
+    </div>
+    <div style="font-size:0.7rem; font-weight:500; color:#7dd3fc; text-transform:uppercase; letter-spacing:0.12em; margin-top:2px;">
+        Portfolio Intelligence
+    </div>
+</div>
+""", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 
 if df_raw.empty:
@@ -723,17 +809,17 @@ st.sidebar.markdown(
         width: 100%;
         padding: 0.5rem 1rem;
         margin-top: 0.5rem;
-        background-color: #0f172a;
-        color: #ffffff !important;
-        border: none;
-        border-radius: 6px;
+        background-color: rgba(14, 165, 233, 0.15);
+        color: #7dd3fc !important;
+        border: 1px solid rgba(14, 165, 233, 0.3);
+        border-radius: 8px;
         font-size: 0.85rem;
         font-weight: 600;
         text-align: center;
         cursor: pointer;
         text-decoration: none;
     }
-    .pdf-btn:hover { background-color: #1e293b; }
+    .pdf-btn:hover { background-color: rgba(14, 165, 233, 0.3); border-color: #0ea5e9; }
     @media print { .pdf-btn { display: none !important; } }
     </style>
     <button class="pdf-btn" onclick="window.print()">📄 Download as PDF</button>
@@ -750,8 +836,8 @@ period_str = pd.Timestamp(selected_period).strftime('%B %Y')
 alerts = get_anomalies(row)
 
 # Header
-st.markdown(f'<div class="main-header">{display_name} — Monthly Board Pack</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="sub-header">{row.get("fy", "")} {row.get("fy_quarter", "")} | {period_str} | Currency: GBP</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="main-header">PortCo KPI Tracker — {display_name}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="sub-header">{row.get("fy", "")} {row.get("fy_quarter", "")} &nbsp;&bull;&nbsp; {period_str} &nbsp;&bull;&nbsp; Currency: GBP &nbsp;&bull;&nbsp; Averroes Capital</div>', unsafe_allow_html=True)
 st.markdown("---")
 
 # ============================================================

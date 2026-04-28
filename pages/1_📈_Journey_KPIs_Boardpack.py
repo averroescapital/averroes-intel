@@ -1,6 +1,6 @@
 """
-Journey Analytics — Trailing 12-Month Lookback
-===============================================
+Journey KPIs + Boardpack — Trailing 12-Month Lookback
+=====================================================
 Investor-deck-style charts for Portco Alpha (Journey Hospitality).
 Auto-selects the most recent 12 months from gold.kpi_monthly_v2.
 
@@ -20,10 +20,10 @@ import plotly.graph_objects as go
 PROJECT_ID = "averroes-portfolio-intel"
 PORTCO_ID = "portco-alpha"
 
-st.set_page_config(page_title="Journey Analytics", page_icon="📈", layout="wide")
+st.set_page_config(page_title="Journey KPIs + Boardpack", page_icon="📈", layout="wide")
 
 # ============================================================
-# DESIGN SYSTEM — Investor Deck Theme (Navy + Green)
+# DESIGN SYSTEM — Clean White + Averroes Blue
 # ============================================================
 NAVY = "#0f172a"
 BLUE = "#1e3a5f"
@@ -39,21 +39,69 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 html, body, [data-testid="stAppViewContainer"] {
-    background-color: #fcfcfc !important;
-    font-family: 'Inter', sans-serif;
+    background-color: #ffffff !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
-.main-header { font-size: 2.2rem; font-weight: 700; color: #0f172a; margin-bottom: 0; }
-.sub-header  { font-size: 0.9rem; color: #64748b; margin-bottom: 24px; }
-.section-h   { font-size: 1.35rem; font-weight: 600; color: #0f172a;
-               border-bottom: 2px solid #0ea5e9; padding-bottom: 6px;
+
+/* ---- SIDEBAR ---- */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%) !important;
+}
+[data-testid="stSidebar"] * { color: #e2e8f0 !important; }
+[data-testid="stSidebar"] [data-testid="stMarkdown"] p,
+[data-testid="stSidebar"] [data-testid="stMarkdown"] span { color: #e2e8f0 !important; }
+[data-testid="stSidebar"] .stSelectbox label,
+[data-testid="stSidebar"] .stRadio label {
+    color: #94a3b8 !important; font-size: 0.75rem;
+    text-transform: uppercase; letter-spacing: 0.06em;
+}
+[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.1) !important; }
+[data-testid="stSidebar"] .stButton > button {
+    background-color: rgba(14, 165, 233, 0.15) !important;
+    color: #7dd3fc !important;
+    border: 1px solid rgba(14, 165, 233, 0.3) !important;
+    border-radius: 8px; font-weight: 500; transition: all 0.2s;
+}
+[data-testid="stSidebar"] .stButton > button:hover {
+    background-color: rgba(14, 165, 233, 0.3) !important;
+    border-color: #0ea5e9 !important;
+}
+
+/* ---- HEADERS ---- */
+.main-header { font-size: 1.85rem; font-weight: 700; color: #0f172a;
+               margin-bottom: 0; letter-spacing: -0.02em; }
+.sub-header  { font-size: 0.85rem; color: #64748b; margin-bottom: 24px; font-weight: 400; }
+.section-h   { font-size: 1.15rem; font-weight: 600; color: #0f172a;
+               border-left: 3px solid #0ea5e9; padding-left: 12px;
+               border-bottom: none; padding-bottom: 0;
                margin-top: 36px; margin-bottom: 6px; }
-.section-sh  { font-size: 0.85rem; color: #64748b; margin-bottom: 14px; }
+.section-sh  { font-size: 0.8rem; color: #64748b; margin-bottom: 14px; }
+
+/* ---- KPI CARDS ---- */
+div[data-testid="stMetric"] {
+    background-color: #ffffff; border: 1px solid #e2e8f0;
+    padding: 20px !important; border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.2s;
+}
+div[data-testid="stMetric"]:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+[data-testid="stMetricValue"] {
+    color: #0f172a !important; font-size: 1.75rem !important;
+    font-weight: 700 !important; letter-spacing: -0.01em;
+}
+[data-testid="stMetricLabel"] {
+    font-size: 0.7rem !important; font-weight: 600 !important;
+    text-transform: uppercase; letter-spacing: 0.06em; color: #64748b !important;
+}
+
+/* ---- BADGES ---- */
 .growth-badge {
     display: inline-block; padding: 8px 16px; border-radius: 50%;
-    background: #1e3a5f; color: white; font-size: 1.4rem; font-weight: 700;
+    background: #0ea5e9; color: white; font-size: 1.4rem; font-weight: 700;
     text-align: center; min-width: 70px; line-height: 1.2;
 }
 .growth-label { font-size: 0.75rem; color: #64748b; text-align: center; margin-top: 4px; }
+
+hr { border: none; border-top: 1px solid #e2e8f0; margin: 24px 0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -99,8 +147,18 @@ def load_v2():
 
 df_all, source = load_v2()
 
-# ---- Sidebar: Refresh + Reprocess ----
-st.sidebar.markdown("### Data Controls")
+# ---- Sidebar: Branding + Controls ----
+st.sidebar.markdown("""
+<div style="text-align:center; padding: 8px 0 16px 0;">
+    <div style="font-size:1.3rem; font-weight:700; color:#ffffff; letter-spacing:-0.02em;">
+        Averroes Capital
+    </div>
+    <div style="font-size:0.7rem; font-weight:500; color:#7dd3fc; text-transform:uppercase; letter-spacing:0.12em; margin-top:2px;">
+        Portfolio Intelligence
+    </div>
+</div>
+""", unsafe_allow_html=True)
+st.sidebar.markdown("---")
 st.sidebar.caption(f"Source: **{source}**")
 if st.sidebar.button("🔄 Refresh Data", use_container_width=True,
                      help="Clear cache and re-query BigQuery"):
@@ -150,7 +208,7 @@ df_all = df_all.sort_values("period").reset_index(drop=True)
 # ============================================================
 all_periods = sorted(df_all["period"].unique())
 
-st.markdown("<div class='main-header'>Journey Hospitality — Trailing 12-Month Analytics</div>",
+st.markdown("<div class='main-header'>Journey KPIs + Boardpack</div>",
             unsafe_allow_html=True)
 
 # Month picker — formatted as "Mar-26", defaulting to latest
@@ -705,5 +763,5 @@ with st.expander("📋 Underlying Data — Last 12 Months"):
     show = show.rename(columns=rename_map)
     st.dataframe(show, hide_index=True, use_container_width=True)
 
-st.caption(f"Journey Analytics | Averroes Capital Portfolio Intelligence | "
+st.caption(f"Journey KPIs + Boardpack | Averroes Capital Portfolio Intelligence | "
            f"Data as of {last['period']:%d %b %Y}")

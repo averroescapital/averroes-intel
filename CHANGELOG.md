@@ -13,6 +13,39 @@ Format per entry:
 
 ---
 
+## 2026-04-28 — FY24 support, Journey Analytics, Cloud Function hardening (v3.0)
+**What:** Major expansion: added FY24 (Nov 2023–Oct 2024) support via era1 parser rewrite, new Journey Analytics dashboard page, Cloud Function file filter fix, Reprocess GCS Files buttons on all pages, system artifact updated to v3.0.0. Total MA files: 28 (up from 16).
+**Why:** FY24 files uploaded to GCS weren't being processed (file filter too restrictive + parser couldn't handle FY24 layout). Journey Analytics requested for investor-deck-style trailing 12-month views.
+**Changes:**
+1. **Era 1 parser rewrite** (`functions/ingest/parsers/era1_parser.py`, 297 lines): P&L section (R5-R18) hardcoded (stable). Bottom section (R19+) now uses label scanning via `_BOTTOM_LABEL_MAP` to handle FY24 compact, FY24 extended, and FY25 layouts. Added `_has_prior_year_column()` to detect Col 10 as Variance (FY24) vs Prior Year (FY25). Ecommerce/EMS P&L also label-scanned.
+2. **Era router fallback** (`parsers/router.py`, 52 lines): Added broader fallback — checks for any P&L/Summary-like sheet before defaulting to era3. Added sheet name logging.
+3. **Cloud Function filter** (`functions/ingest/main.py`): Relaxed from "Management Accounts"/"MAfile" check to any `.xlsx/.xls/.xlsm`. Added temp/hidden file skip (`~$`, `.`). Added try/except with traceback around parse. Added download size + period extraction logging.
+4. **Journey Analytics page** (`pages/3_📈_Journey_Analytics.py`, 709 lines): Investor-deck-style trailing 12-month charts with month selector dropdown. Sections: Revenue & ARR, Direct Contribution, EBITDA & Cash, summary comparison table. `.fillna(0)` guards on all `.astype(int)` calls.
+5. **Reprocess GCS Files button** on all pages (`pe_app.py`, `Era_View.py`, `Journey_Analytics.py`): Copies blobs in-place to re-trigger Cloud Function without re-uploading.
+6. **requirements.txt**: Added `google-cloud-storage>=2.14.0` for Reprocess button on Streamlit Community Cloud.
+7. **common.py**: Fixed missing "may" in `period_from_filename` regex.
+8. **silver_gold_v2.py**: `SERVICES_ARR` only computed when `SERVICES_MRR` exists in source (era3 only). Reverted attempted derivation from revenue.
+9. **System artifact** updated to v3.0.0 (1040 lines).
+**Files touched:**
+- `functions/ingest/parsers/era1_parser.py` — full rewrite
+- `functions/ingest/parsers/router.py` — fallback + logging
+- `functions/ingest/parsers/common.py` — regex fix
+- `functions/ingest/main.py` — file filter + error handling
+- `functions/ingest/silver_gold_v2.py` — Services ARR guard
+- `pages/3_📈_Journey_Analytics.py` — new file
+- `pages/2_📊_Era_View.py` — sidebar buttons
+- `pe_app.py` — sidebar buttons
+- `requirements.txt` — google-cloud-storage added
+- `Averroes_Portfolio_Intel_System_Artifact.html` — v3.0.0
+**Tested against:** All 28 MA files (12 FY24 + 12 FY25 + 2 Era 2 + 2 Era 3) parse correctly.
+**Follow-ups:**
+- Decommission legacy `gold.kpi_monthly` table
+- Onboard Portco Beta / Gamma
+- Consider adding NRR/GRR charts once retention data is available
+- Add covenant trend forecasting (6-month forward from GL Covenants cols F+)
+
+---
+
 ## 2026-04-16 — GL Covenants + Averroes Guard Rails parser (View 7 goes live)
 **What:** Added covenant parsing to both parser codepaths (Cloud Function + local backfill). Extracts 23 KPIs from two sheets: GL Covenants (ARR covenant ratio, Interest Cover, Debt Service Ratio, Cash Min Balance) and Averroes Guard Rails (Revenue/MRR/Contribution/EBITDA-less-Capex/Cash — each with covenant, actual, and ratio). Updated the dashboard compat layer to map these KPIs to View 7 columns with dynamic RAG status (green/amber/red based on ratio thresholds). Added 22 covenant columns to the gold v2 SQL schema.
 **Why:** View 7 (Covenants & Risk) was showing zero placeholders because no parser read the covenant sheets. Now it displays real compliance data with actual-vs-covenant tracking, headroom analysis, and breach detection.

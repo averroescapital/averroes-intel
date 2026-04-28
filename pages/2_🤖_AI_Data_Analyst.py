@@ -9,23 +9,65 @@ st.set_page_config(page_title="AI Data Analyst (Advanced)", page_icon="🤖", la
 PROJECT_ID = "averroes-portfolio-intel"
 
 # ============================================================
-# DESIGN SYSTEM
+# DESIGN SYSTEM — Clean White + Averroes Blue
 # ============================================================
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
     html, body, [data-testid="stAppViewContainer"] {
-        background-color: #fcfcfc !important;
-        font-family: 'Inter', sans-serif;
+        background-color: #ffffff !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
-    .main-header { font-size: 2.2rem; font-weight: 700; color: #0f172a; margin-bottom: 0px; }
-    .sub-header { font-size: 0.9rem; color: #64748b; margin-bottom: 30px; }
-    .ai-bubble { background-color: #f8fafc; border-left: 4px solid #0ea5e9; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+
+    /* ---- SIDEBAR ---- */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%) !important;
+    }
+    [data-testid="stSidebar"] * { color: #e2e8f0 !important; }
+    [data-testid="stSidebar"] [data-testid="stMarkdown"] p,
+    [data-testid="stSidebar"] [data-testid="stMarkdown"] span { color: #e2e8f0 !important; }
+    [data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.1) !important; }
+
+    /* ---- HEADERS ---- */
+    .main-header {
+        font-size: 1.85rem; font-weight: 700; color: #0f172a;
+        margin-bottom: 0; letter-spacing: -0.02em;
+    }
+    .sub-header {
+        font-size: 0.85rem; color: #64748b; margin-bottom: 28px; font-weight: 400;
+    }
+
+    /* ---- CHAT ---- */
+    .ai-bubble {
+        background-color: #f8fafc; border-left: 3px solid #0ea5e9;
+        padding: 16px 20px; border-radius: 8px; margin-bottom: 20px;
+    }
+    [data-testid="stChatMessage"] {
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 12px;
+    }
+
+    hr { border: none; border-top: 1px solid #e2e8f0; margin: 24px 0; }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class='main-header'>🤖 Enterprise AI Data Analyst</div>", unsafe_allow_html=True)
-st.markdown("<div class='sub-header'>Connected to **Bronze (Raw)** and **Gold (Consolidated)** layers. Ask Natural Language questions about performance, audit trails, or GL details.</div>", unsafe_allow_html=True)
+# Sidebar branding
+st.sidebar.markdown("""
+<div style="text-align:center; padding: 8px 0 16px 0;">
+    <div style="font-size:1.3rem; font-weight:700; color:#ffffff; letter-spacing:-0.02em;">
+        Averroes Capital
+    </div>
+    <div style="font-size:0.7rem; font-weight:500; color:#7dd3fc; text-transform:uppercase; letter-spacing:0.12em; margin-top:2px;">
+        Portfolio Intelligence
+    </div>
+</div>
+""", unsafe_allow_html=True)
+st.sidebar.markdown("---")
+
+st.markdown("<div class='main-header'>AI Data Analyst</div>", unsafe_allow_html=True)
+st.markdown("<div class='sub-header'>Connected to Bronze (Raw) and Gold (Consolidated) layers &nbsp;&bull;&nbsp; Ask natural language questions about performance, audit trails, or GL details</div>", unsafe_allow_html=True)
 
 # Initialization
 if "messages" not in st.session_state:

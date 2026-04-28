@@ -74,7 +74,7 @@
 
 <h1>Averroes Portfolio Intelligence Platform</h1>
 <p class="subtitle">Complete System Artifact &mdash; End-to-End Technical Reference<br>
-<strong>Version:</strong> 2.0.4 &nbsp;|&nbsp; <strong>Date:</strong> April 17, 2026 &nbsp;|&nbsp; <strong>Status:</strong> <span class="badge badge-live">LIVE</span></p>
+<strong>Version:</strong> 3.0.0 &nbsp;|&nbsp; <strong>Date:</strong> April 17, 2026 &nbsp;|&nbsp; <strong>Status:</strong> <span class="badge badge-live">LIVE</span></p>
 
 <div class="info-box">
 <strong>Purpose:</strong> This document is a self-contained system artifact designed to give a new developer or AI assistant complete context to continue development. It covers the full architecture, every file path, all code logic, GCP infrastructure, deployment procedures, and data model in precise detail.
@@ -132,6 +132,8 @@ graph TB
         N --> O6["Capital Efficiency / Cash"]
         N --> O7["People / Headcount"]
         N --> O8["YTD Comparison Table"]
+        N --> O9["📊 Era View<br/>(per-era breakdown)"]
+        N --> O10["📈 Journey Analytics<br/>(trailing 12-month charts)"]
     end
 
     subgraph VIEWS ["6. GOLD VIEWS (BigQuery)"]
@@ -207,8 +209,8 @@ graph TB
 
 <div class="file-tree">averroes-portfolio-intel/
 |
-|-- pe_app.py                              <strong># PRIMARY Streamlit dashboard (1182 lines)</strong>
-|-- requirements.txt                       # Root-level dependencies
+|-- pe_app.py                              <strong># PRIMARY Streamlit dashboard (1210 lines)</strong>
+|-- requirements.txt                       # Root-level dependencies (incl. google-cloud-storage)
 |-- kpi_taxonomy.yaml                      # Canonical KPI catalog
 |-- PROJECT_BRIEF.md                       # Living source of truth
 |-- CHANGELOG.md                           # Session-by-session log
@@ -225,17 +227,17 @@ graph TB
 |
 |-- functions/
 |   |-- ingest/                            <strong># CLOUD FUNCTION SOURCE</strong>
-|   |   |-- main.py                        <strong># Entry point: process_file() (248 lines)</strong>
+|   |   |-- main.py                        <strong># Entry point: process_file() (261 lines)</strong>
 |   |   |-- silver_gold_v2.py              <strong># Silver+Gold transform (396 lines)</strong>
 |   |   |-- ma_parser.py                   # Legacy dispatcher (193 lines)
 |   |   |-- backfill.py                    # Batch backfill runner (98 lines)
 |   |   |-- requirements.txt               # Cloud Function deps
 |   |   |-- parsers/
 |   |   |   |-- __init__.py
-|   |   |   |-- router.py                  <strong># Era detection + dispatch (43 lines)</strong>
+|   |   |   |-- router.py                  <strong># Era detection + dispatch (52 lines)</strong>
 |   |   |   |-- common.py                  <strong># Shared helpers (112 lines)</strong>
 |   |   |   |-- schema.py                  # Canonical KPI catalog (175 lines)
-|   |   |   |-- era1_parser.py             # Nov 2024 - Oct 2025 (224 lines)
+|   |   |   |-- era1_parser.py             <strong># FY24 + FY25: Nov 2023 - Oct 2025 (297 lines)</strong>
 |   |   |   |-- era2_parser.py             # Nov 2025 - Dec 2025 (576 lines)
 |   |   |   `-- era3_parser.py             <strong># Jan 2026+ canonical (446 lines)</strong>
 |   |   `-- kpi_taxonomy.yaml
@@ -261,12 +263,19 @@ graph TB
 |   |   `-- secrets.toml                   # GCP creds (gitignored)
 |   |-- pages/
 |   |   |-- 1_AI_Data_Analyst.py           # Gemini NL-to-SQL chat
-|   |   `-- 2_Era_View.py                  # Per-era breakdown
+|   |   `-- 2_Era_View.py                  # Per-era breakdown (with Refresh/Reprocess buttons)
 |   |-- gold_kpi_monthly.csv               # Local fallback
 |   `-- silver_kpi_long.csv                # Backfill output
 |
-|-- raw_ma_files/                          <strong># 16 actual MA Excel files (gitignored)</strong>
-|   |-- FY25 Management Accounts - November 24.xlsx    [Era 1 start]
+|-- pages/                                 <strong># ROOT-LEVEL Streamlit multi-page app</strong>
+|   |-- 1_🤖_AI_Data_Analyst.py           # Gemini NL-to-SQL chat
+|   |-- 2_📊_Era_View.py                  # Per-era breakdown (with Refresh/Reprocess)
+|   `-- 3_📈_Journey_Analytics.py         <strong># NEW: Trailing-12-month investor charts (709 lines)</strong>
+|
+|-- raw_ma_files/                          <strong># 28 actual MA Excel files (gitignored)</strong>
+|   |-- FY24 Management Accounts - November 23.xlsx    [FY24 start]
+|   |-- ... (12 FY24 files: Nov 23 - Oct 24)
+|   |-- FY25 Management Accounts - November 24.xlsx    [FY25 / Era 1 start]
 |   |-- ... (12 Era 1 files: Nov 24 - Oct 25)
 |   |-- FY26 Management Accounts - November 25.xlsx    [Era 2 start]
 |   |-- 2. FY26 Management Accounts - December 25.xlsx
@@ -286,15 +295,15 @@ graph TB
 <h2><span class="section-num">3.</span> The Era Model (Critical Concept)</h2>
 <!-- ============================================================ -->
 
-<p>Portco Alpha's Management Accounts evolved dramatically over 16 months. The parser branches by "era" because the available Excel sheets and their layouts differ significantly between time periods.</p>
+<p>Portco Alpha's Management Accounts evolved dramatically over 28 months (Nov 2023 &ndash; Feb 2026). The parser branches by "era" because the available Excel sheets and their layouts differ significantly between time periods.</p>
 
 <table>
   <tr><th>Era</th><th>Months</th><th>Files</th><th>Key Sheets Available</th><th>Parser</th></tr>
   <tr>
     <td><span class="badge badge-era1">Era 1</span></td>
-    <td>Nov 2024 &ndash; Oct 2025</td>
-    <td>12</td>
-    <td><code>Summary</code> (with trailing space drift), <code>Headcount</code>, basic P&amp;L</td>
+    <td>Nov 2023 &ndash; Oct 2025</td>
+    <td>24</td>
+    <td><code>Summary</code> (with trailing space drift), <code>Headcount</code>, <code>Ecommerce P&amp;L</code>, <code>EMS P&amp;L</code>. Covers both FY24 (Nov 23&ndash;Oct 24) and FY25 (Nov 24&ndash;Oct 25) with layout drift handled by label scanning.</td>
     <td><code>era1_parser.py</code></td>
   </tr>
   <tr>
@@ -313,22 +322,43 @@ graph TB
   </tr>
 </table>
 
+<div class="info-box">
+<strong>FY24 Layout Drift (handled by Era 1 parser):</strong><br>
+<strong>FY24 compact (Nov 23 &ndash; ~May 24):</strong> No EBITDA Less Capex row; Tech MRR/Cash/NWC start at R20. Col 10 = Variance (£), NOT Prior Year.<br>
+<strong>FY24 extended (Jun 24 &ndash; Oct 24):</strong> Capitalised Dev + EBITDA Less Capex rows inserted; Tech MRR at ~R28. Col 10 = Variance (£), NOT Prior Year.<br>
+<strong>FY25 (Nov 24 &ndash; Oct 25):</strong> Same extended layout, adds LTM Tech MRR row. Col 10 = Prior Year.<br>
+The parser detects these variants by scanning R3 C10 header for "Prior"/"PY" vs "Variance", and label-scanning the bottom section (R19+) rather than using hardcoded row numbers.
+</div>
+
 <h3>3.1 Era Detection Logic</h3>
-<p>File: <code>functions/ingest/parsers/router.py</code></p>
+<p>File: <code>functions/ingest/parsers/router.py</code> (52 lines)</p>
 <pre><code><span class="comment"># Era signatures:</span>
 <span class="comment">#   era3: has 'Financial KPIs' sheet</span>
 <span class="comment">#   era2: has 'P&amp;L Detail' AND NO 'Financial KPIs'</span>
-<span class="comment">#   era1: has 'Summary' sheet only</span>
+<span class="comment">#   era1: has 'Summary' sheet — covers FY24 AND FY25 files</span>
 
 <span class="keyword">def</span> <span class="func">detect_era</span>(wb):
-    has_financial_kpi = find_sheet(wb, 'Financial KPIs') <span class="keyword">is not</span> None
-    has_pnl_detail    = find_sheet(wb, 'P&amp;L Detail') <span class="keyword">is not</span> None
-    has_summary       = find_sheet(wb, 'Summary') <span class="keyword">is not</span> None
+    has_pnl_detail    = find_sheet(wb, <span class="string">'P&amp;L Detail'</span>) <span class="keyword">is not</span> None
+    has_financial_kpi = find_sheet(wb, <span class="string">'Financial KPIs'</span>) <span class="keyword">is not</span> None
+    has_summary       = find_sheet(wb, <span class="string">'Summary'</span>) <span class="keyword">is not</span> None
 
     <span class="keyword">if</span> has_financial_kpi: <span class="keyword">return</span> <span class="string">'era3'</span>
     <span class="keyword">if</span> has_pnl_detail:    <span class="keyword">return</span> <span class="string">'era2'</span>
-    <span class="keyword">if</span> has_summary:       <span class="keyword">return</span> <span class="string">'era1'</span>
-    <span class="keyword">return</span> <span class="string">'era3'</span>  <span class="comment"># fallback</span></code></pre>
+    <span class="keyword">if</span> has_summary:       <span class="keyword">return</span> <span class="string">'era1'</span>  <span class="comment"># covers FY24 and FY25</span>
+
+    <span class="comment"># Broader fallback: any P&amp;L or Summary-like sheet → era1</span>
+    <span class="keyword">for</span> sname <span class="keyword">in</span> wb.sheetnames:
+        <span class="keyword">if</span> <span class="string">'p&amp;l'</span> <span class="keyword">in</span> sname.lower() <span class="keyword">or</span> <span class="string">'summary'</span> <span class="keyword">in</span> sname.lower():
+            print(f<span class="string">"[router] fallback: found '{sname}', treating as era1"</span>)
+            <span class="keyword">return</span> <span class="string">'era1'</span>
+
+    <span class="keyword">return</span> <span class="string">'era3'</span>  <span class="comment"># last-resort fallback</span>
+
+<span class="keyword">def</span> <span class="func">parse</span>(wb, file_name=None):
+    era = detect_era(wb)
+    print(f<span class="string">"[router] {file_name}: detected {era} (sheets: {wb.sheetnames})"</span>)
+    <span class="comment"># Dispatch to era-specific parser; stamp era on every row</span>
+    ...</code></pre>
 
 <!-- ============================================================ -->
 <h2><span class="section-num">4.</span> Parser Architecture (Complete Code)</h2>
@@ -369,13 +399,55 @@ graph TB
         <span class="string">'sheet'</span>: sheet, <span class="string">'source_cell'</span>: source_cell,
     }</code></pre>
 
-<h3>4.2 Era 3 Parser &mdash; <code>parsers/era3_parser.py</code> (Canonical)</h3>
+<h3>4.2 Era 1 Parser &mdash; <code>parsers/era1_parser.py</code> (FY24 + FY25)</h3>
+
+<div class="info-box">
+<strong>Key design:</strong> Era 1 covers 24 files across two fiscal years (FY24: Nov 2023&ndash;Oct 2024, FY25: Nov 2024&ndash;Oct 2025). The P&amp;L section (R5&ndash;R18) is stable and hardcoded. The bottom section (R19+) uses <strong>label scanning</strong> because row positions drift between FY24 compact, FY24 extended, and FY25 layouts. Prior Year column is detected dynamically from R3 header.
+</div>
+
+<h4>4.2.1 Prior Year Column Detection</h4>
+<pre><code><span class="keyword">def</span> <span class="func">_has_prior_year_column</span>(ws):
+    <span class="comment">"""Check R3 C10 header: FY25 has 'PY'/'Prior Year', FY24 has 'Variance'."""</span>
+    header = str(ws.cell(3, 10).value or <span class="string">''</span>).strip().lower()
+    <span class="keyword">return</span> <span class="string">'prior'</span> <span class="keyword">in</span> header <span class="keyword">or</span> header == <span class="string">'py'</span></code></pre>
+
+<h4>4.2.2 Label-Scanned Bottom Section</h4>
+<pre><code><span class="comment"># Label → KPI mapping for the bottom section (R19+), scanned not hardcoded</span>
+_BOTTOM_LABEL_MAP = {
+    <span class="string">'capitalised development'</span>:  <span class="string">'CAPEX'</span>,
+    <span class="string">'ebitda less capex'</span>:        <span class="string">'EBITDA_LESS_CAPEX'</span>,
+    <span class="string">'tech mrr'</span>:                 <span class="string">'TECH_MRR'</span>,
+    <span class="string">'ltm tech mrr'</span>:             <span class="string">'LTM_TECH_MRR'</span>,
+    <span class="string">'cash on hand'</span>:             <span class="string">'CASH_ON_HAND'</span>,
+    <span class="string">'cash at bank'</span>:             <span class="string">'CASH_ON_HAND'</span>,   <span class="comment"># FY24 variant label</span>
+    <span class="string">'net working capital'</span>:      <span class="string">'NET_WORKING_CAPITAL'</span>,
+    <span class="string">'net debt'</span>:                 <span class="string">'NET_DEBT'</span>,
+    <span class="string">'cash burn'</span>:                <span class="string">'CASH_BURN'</span>,
+}
+
+<span class="comment"># KPIs where YTD / Prior Year don't make sense (snapshot values)</span>
+_BOTTOM_SKIP_YTD = {<span class="string">'TECH_MRR'</span>, <span class="string">'LTM_TECH_MRR'</span>, <span class="string">'CASH_ON_HAND'</span>,
+                    <span class="string">'NET_WORKING_CAPITAL'</span>, <span class="string">'NET_DEBT'</span>, <span class="string">'CASH_BURN'</span>, <span class="string">'CAPEX'</span>}
+
+<span class="comment"># Scanning loop (R19 to R44):</span>
+<span class="keyword">for</span> r <span class="keyword">in</span> range(19, min(45, ws.max_row) + 1):
+    label = str(ws.cell(r, 1).value or <span class="string">''</span>).strip().lower()
+    kpi = _BOTTOM_LABEL_MAP.get(label)
+    <span class="keyword">if</span> kpi:
+        _emit(rows, period, kpi, sheet_name, ws, r,
+              skip_ytd=(kpi <span class="keyword">in</span> _BOTTOM_SKIP_YTD),
+              skip_py=(global_skip_py <span class="keyword">or</span> kpi <span class="keyword">in</span> _BOTTOM_SKIP_YTD))</code></pre>
+
+<h4>4.2.3 Ecommerce/EMS P&amp;L (Also Label-Scanned)</h4>
+<p>Both <code>_parse_ecommerce_pnl()</code> and <code>_parse_ems_pnl()</code> use label scanning (matching "success fees", "payment fees", "subscription", etc.) rather than hardcoded rows, for resilience across FY24/FY25 layout drift.</p>
+
+<h3>4.3 Era 3 Parser &mdash; <code>parsers/era3_parser.py</code> (Canonical)</h3>
 
 <div class="info-box">
 <strong>Key insight:</strong> Era 3 is the canonical parser. It inherits ALL Era 2 extraction functions and adds: Financial KPIs, Revenue Waterfall, Customer Numbers, Cash Flow, P&amp;L Summary, and KPI data sheets.
 </div>
 
-<h4>4.2.1 Financial KPIs Extraction</h4>
+<h4>4.3.1 Financial KPIs Extraction</h4>
 <p>The Financial KPIs sheet has a unique block-based layout. Header rows at positions 3, 19, 35, 51, 67 contain section labels. Below each header: +1 = Prior Year, +2 = Budget, +3 = Actual.</p>
 
 <pre><code><span class="comment"># Block label mapping (sheet header text -> canonical KPI name)</span>
@@ -402,7 +474,7 @@ _FIN_KPI_BLOCKS = {
 <strong>RULE_OF_40:</strong> Component layout at rows 67-75 (ARR Growth + EBITDA Margin), not a standard block
 </div>
 
-<h4>4.2.2 P&amp;L Summary Column Layout</h4>
+<h4>4.3.2 P&amp;L Summary Column Layout</h4>
 <pre><code><span class="comment"># Col A = Label</span>
 <span class="comment"># Col B = Actual    Col C = Budget    Col D = Variance   Col E = PY   Col F = PY Var</span>
 <span class="comment"># Col G = YTD Act   Col H = YTD Bgt   Col I = YTD Bgt Var  Col J = YTD PY  Col K = YTD PY Var</span>
@@ -421,7 +493,7 @@ _FIN_KPI_BLOCKS = {
 <span class="comment"># R19  : Capitalised Development (= Capex)</span>
 <span class="comment"># R20  : EBITDA Less Capex</span></code></pre>
 
-<h4>4.2.3 Customer Numbers (Cross-tab)</h4>
+<h4>4.3.3 Customer Numbers (Cross-tab)</h4>
 <pre><code><span class="comment"># Layout (Feb 2026 confirmed):</span>
 <span class="comment">#   R2: end-of-month dates across cols B..Y</span>
 <span class="comment">#   R3: first-of-month dates (use this for period)</span>
@@ -433,7 +505,7 @@ _FIN_KPI_BLOCKS = {
 <span class="comment">#</span>
 <span class="comment"># Extracts ALL populated month-columns (backfills to Aug 2025)</span></code></pre>
 
-<h4>4.2.4 Era 3 Main Parse Function</h4>
+<h4>4.3.4 Era 3 Main Parse Function</h4>
 <pre><code><span class="keyword">def</span> <span class="func">parse</span>(wb, file_name=None):
     rows = []
     period = parse_financial_kpis(wb, rows)        <span class="comment"># Authoritative Tech MRR source</span>
@@ -464,7 +536,7 @@ _FIN_KPI_BLOCKS = {
     parse_kpi_data(wb, period, rows)
     <span class="keyword">return</span> rows</code></pre>
 
-<h3>4.3 Era 2 Parser Key Functions</h3>
+<h3>4.4 Era 2 Parser Key Functions</h3>
 
 <h4>Balance Sheet</h4>
 <pre><code><span class="comment"># Layout: Row labels in col A or B (NWC is in col A at R18!)</span>
@@ -517,7 +589,7 @@ Era 3 Tech MRR &amp; Services MRR are in <strong>raw GBP</strong> (e.g., 467,135
   <tr><td><code>EMS_MRR</code></td><td>Tech MRR &minus; Ecommerce MRR</td><td>ems</td></tr>
   <tr><td><code>EMS_ARR</code></td><td>EMS MRR &times; 12</td><td>ems</td></tr>
   <tr><td><code>TECH_ARR</code></td><td>Tech MRR &times; 12</td><td>none</td></tr>
-  <tr><td><code>SERVICES_ARR</code></td><td>Services MRR &times; 12</td><td>services</td></tr>
+  <tr><td><code>SERVICES_ARR</code></td><td>Services MRR &times; 12 (Era 3 only &mdash; only when SERVICES_MRR exists in source)</td><td>services</td></tr>
 </table>
 
 <h3>5.3 Gold Pivot &mdash; <code>pivot_to_gold()</code></h3>
@@ -540,11 +612,23 @@ Era 3 Tech MRR &amp; Services MRR are in <strong>raw GBP</strong> (e.g., 467,135
 <pre><code>@functions_framework.cloud_event
 <span class="keyword">def</span> <span class="func">process_file</span>(cloud_event):
     <span class="comment"># 1. Extract portco_id from GCS path (first path segment)</span>
-    <span class="comment"># 2. Filter: only process files with "Management Accounts" or "MAfile" in name</span>
-    <span class="comment"># 3. Download blob bytes from GCS</span>
+    <span class="comment"># 2. Filter: accept any .xlsx/.xls/.xlsm, skip ~$ and . prefixed files</span>
+    <span class="keyword">if not</span> basename.lower().endswith((<span class="string">".xlsx"</span>, <span class="string">".xls"</span>, <span class="string">".xlsm"</span>)):
+        <span class="keyword">return</span>  <span class="comment"># skip non-Excel</span>
+    <span class="keyword">if</span> basename.startswith((<span class="string">"~$"</span>, <span class="string">"."</span>)):
+        <span class="keyword">return</span>  <span class="comment"># skip temp/hidden files</span>
 
-    <span class="comment"># 4. PARSE</span>
-    parsed_rows = parse_alpha_ma(file_bytes, basename)
+    <span class="comment"># 3. Download blob bytes from GCS (with size logging)</span>
+    file_bytes = blob.download_as_bytes()
+    print(f<span class="string">"[ingest] downloaded {len(file_bytes):,} bytes"</span>)
+
+    <span class="comment"># 4. PARSE (with try/except + traceback logging)</span>
+    <span class="keyword">try</span>:
+        parsed_rows = parse_alpha_ma(file_bytes, basename)
+    <span class="keyword">except</span> Exception <span class="keyword">as</span> e:
+        print(f<span class="string">"[ingest] ERROR: {e}"</span>); traceback.print_exc()
+        <span class="keyword">return</span>
+    <span class="comment"># Logs: era, periods extracted, row count</span>
 
     <span class="comment"># 5. BRONZE - Idempotent: DELETE by file_name, then INSERT</span>
     write_bronze(parsed_rows, portco_id, basename)
@@ -574,6 +658,16 @@ Era 3 Tech MRR &amp; Services MRR are in <strong>raw GBP</strong> (e.g., 467,135
     <span class="comment"># Priority 1: BigQuery gold.kpi_monthly_v2 (live)</span>
     <span class="comment"># Priority 2: GCS bucket MA files (parse on the fly)</span>
     <span class="comment"># Priority 3: Local CSV fallback (static)</span></code></pre>
+
+<h3>7.1.1 Sidebar Controls (All Pages)</h3>
+<p>Every dashboard page (<code>pe_app.py</code>, <code>Era_View.py</code>, <code>Journey_Analytics.py</code>) includes two sidebar buttons:</p>
+<ul>
+<li><strong>🔄 Refresh Data:</strong> Clears Streamlit cache (<code>st.cache_data.clear()</code>) and re-queries BigQuery.</li>
+<li><strong>⚙️ Reprocess GCS Files:</strong> Copies each <code>.xlsx</code> blob in-place on GCS (blob → same path) which triggers a new <code>object.v1.finalized</code> event, re-running the Cloud Function for every file. Useful after deploying parser fixes without needing to re-upload files manually.</li>
+</ul>
+
+<h3>7.1.2 Journey Analytics Page (<code>pages/3_📈_Journey_Analytics.py</code>)</h3>
+<p>Investor-deck-style trailing 12-month charts. Features a <strong>month selector dropdown</strong> (defaults to latest month) that controls the 12-month window endpoint. Includes four chart sections: Revenue &amp; ARR trajectory, Direct Contribution breakdown, EBITDA &amp; Cash trends, and a summary comparison table. All <code>.astype(int)</code> calls are guarded with <code>.fillna(0)</code> to prevent NaN crashes.</p>
 
 <h3>7.2 Unit Conventions in Gold (Dashboard Display)</h3>
 
@@ -751,7 +845,7 @@ python3 deploy/deploy_v2.py
 <p>The 5 steps:</p>
 <ol>
   <li><strong>Apply schemas:</strong> Executes <code>bq_schemas/silver_gold_v2.sql</code> (creates silver.kpi_long + gold.kpi_monthly_v2 + 3 views)</li>
-  <li><strong>Backfill:</strong> Parses all 16 MA files locally, outputs <code>dashboard/silver_kpi_long.csv</code> and <code>dashboard/gold_kpi_monthly.csv</code></li>
+  <li><strong>Backfill:</strong> Parses all 28 MA files locally, outputs <code>dashboard/silver_kpi_long.csv</code> and <code>dashboard/gold_kpi_monthly.csv</code></li>
   <li><strong>Load BQ:</strong> Uploads CSVs into BigQuery (idempotent DELETE then INSERT per portco_id)</li>
   <li><strong>Upload GCS:</strong> Copies raw MA files to <code>gs://averroes-portfolio-intel-portfolio-data/portco-alpha/ma-files/</code></li>
   <li><strong>Sanity check:</strong> Runs SELECT query showing revenue, ARR, covenant ratios by month</li>
@@ -843,13 +937,14 @@ thefuzz==0.20.0
 PyYAML==6.0.1</code></pre>
 
 <h3>12.2 Dashboard (root <code>requirements.txt</code>)</h3>
-<pre><code>streamlit
-pandas
-numpy
-plotly
-google-cloud-bigquery
-pandas-gbq
-google-auth</code></pre>
+<pre><code>streamlit>=1.31.0
+pandas>=2.0.0
+numpy>=1.24.0
+plotly>=5.18.0
+google-cloud-bigquery>=3.15.0
+google-cloud-storage>=2.14.0      <span class="comment"># Required for Reprocess GCS Files button</span>
+pandas-gbq>=0.20.0
+google-auth>=2.23.0</code></pre>
 
 <h3>12.3 Deployment (<code>deploy/requirements.txt</code>)</h3>
 <pre><code>google-cloud-bigquery
@@ -862,8 +957,12 @@ openpyxl</code></pre>
 <h2><span class="section-num">13.</span> Known Issues &amp; Gotchas</h2>
 <!-- ============================================================ -->
 
-<div class="warn-box">
-<strong>Parser Brittleness:</strong> Parsers use hardcoded row/column positions (e.g., R18 for NWC, R6C6 for TCV). If the portco changes their MA template layout, parsers will silently extract wrong values. Always verify by comparing dashboard values against the source Excel.
+<div class="info-box">
+<strong>Parser Resilience (v3.0):</strong> Era 1 parser now uses <strong>label scanning</strong> for the bottom section (Tech MRR, Cash, NWC, etc.) and BL P&amp;L breakdowns, making it resilient to row-position drift across FY24/FY25 variants. Era 2/3 parsers still use some hardcoded positions (e.g., R18 for NWC in Balance Sheet, R6C6 for TCV). Always verify dashboard values against source Excel when a new MA template is received.
+</div>
+
+<div class="info-box">
+<strong>Cloud Function File Filter (v3.0 — FIXED):</strong> Previously only accepted filenames containing "Management Accounts" or "MAfile". Now accepts <strong>any .xlsx/.xls/.xlsm</strong> file, skipping only temp files (<code>~$</code>) and hidden files (<code>.</code> prefix). This fixed the issue where FY24 files uploaded to GCS didn't trigger processing.
 </div>
 
 <div class="warn-box">
@@ -876,6 +975,10 @@ openpyxl</code></pre>
 
 <div class="info-box">
 <strong>Financial KPIs Block Exceptions:</strong> Three blocks deviate from the standard PY/Budget/Actual pattern: Indicative EV (single value), S&amp;M Efficiency (YTD-only), and Time to Value (extra "excl. blocked" row at +4). These have explicit <code>if kpi == ...</code> handlers.
+</div>
+
+<div class="warn-box">
+<strong>Services MRR/ARR Gap:</strong> <code>SERVICES_MRR</code> is only available from the <code>Financial KPIs</code> sheet (Era 3, Jan 2026+). It does <strong>not</strong> exist in Era 1 or Era 2 data. Therefore <code>SERVICES_ARR</code> (= Services MRR &times; 12) is only populated for Era 3 months. Do NOT derive/estimate Services MRR from revenue — only use when explicitly present in source data.
 </div>
 
 <div class="info-box">
@@ -919,13 +1022,14 @@ openpyxl</code></pre>
   <li><strong>Set GCP credentials:</strong> <code>export GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json</code></li>
   <li><strong>Run dashboard locally:</strong> <code>streamlit run pe_app.py</code></li>
   <li><strong>To backfill/deploy:</strong> <code>python3 deploy/deploy_v2.py --key /path/to/key.json</code></li>
-  <li><strong>To add a new MA file:</strong> Place in <code>raw_ma_files/</code>, run deploy, or upload directly to GCS</li>
+  <li><strong>To add a new MA file:</strong> Upload to GCS bucket (<code>portco-alpha/ma-files/</code>); Cloud Function auto-triggers. Or place in <code>raw_ma_files/</code> and run deploy.</li>
+  <li><strong>To reprocess all files:</strong> Hit <strong>⚙️ Reprocess GCS Files</strong> button in dashboard sidebar (copies blobs in-place to re-trigger Cloud Function)</li>
   <li><strong>To modify parser:</strong> Edit <code>functions/ingest/parsers/era3_parser.py</code> (canonical), then backfill</li>
   <li><strong>To add new gold columns:</strong> Add to <code>bq_schemas/silver_gold_v2.sql</code> + <code>silver_gold_v2.py:pivot_to_gold()</code> + <code>pe_app.py:harmonize_v2_columns()</code></li>
 </ol>
 
 <p style="margin-top: 40px; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--border); padding-top: 16px;">
-  Averroes Capital &mdash; Portfolio Intelligence Platform &mdash; System Artifact v2.0.4<br>
+  Averroes Capital &mdash; Portfolio Intelligence Platform &mdash; System Artifact v3.0.0<br>
   Generated April 17, 2026 | Confidential
 </p>
 

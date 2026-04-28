@@ -2,7 +2,7 @@
 
 **Purpose of this file:** This is the living source of truth for any AI/assistant (or human) picking up the project cold. Read this first, then CHANGELOG.md. Update whenever non-trivial work lands.
 
-**Last updated:** 2026-04-16
+**Last updated:** 2026-04-28
 
 ---
 
@@ -17,7 +17,7 @@ PE-grade portfolio monitoring platform for Averroes Capital. Ingests monthly Man
 
 ## 2. Current phase
 
-**V2 migration COMPLETE (2026-04-16).** Era-based Python parsers done (all three eras), dashboard cut over to `gold.kpi_monthly_v2`, Customer Numbers + Covenant sheets parsed. BQ loaded: 2,110 silver rows + 24 gold rows (16 months: 2024-11 → 2026-02). GCS: 16 MA files uploaded to `gs://averroes-portfolio-intel-portfolio-data/portco-alpha/ma-files/`. Cloud Function `portfolio-data-ingest` redeployed (revision 00015, gen2, python311). GitHub pushed. Remaining: decommission legacy `gold.kpi_monthly`, verify Streamlit Community Cloud dashboard at `https://averroes-capital-123.streamlit.app/`.
+**V3 LIVE (2026-04-28).** FY24 support added — era1 parser rewritten with label scanning to handle 24 months of layout drift (FY24 Nov 2023–Oct 2024 + FY25 Nov 2024–Oct 2025). Total MA files: 28 (spanning Nov 2023 → Feb 2026). Cloud Function file filter relaxed (any .xlsx, not just "Management Accounts"). New Journey Analytics page (trailing 12-month investor charts with month selector). Reprocess GCS Files + Refresh Data buttons on all dashboard pages. System artifact updated to v3.0.0. All deployed: Cloud Function redeployed, GitHub pushed, Streamlit Community Cloud live at `https://averroes-capital-123.streamlit.app/`.
 
 ---
 
@@ -62,9 +62,11 @@ Currency: GBP. All monetary figures stored in £k unless suffixed otherwise.
 - **Anomaly function:** `portfolio-anomaly-detect` (scheduled, generates alerts + Gemini exec commentary)
 - **BI frontend:** Streamlit Community Cloud (`dashboard/app.py` and `dashboard/pe_app.py`)
   - Live URL: `https://averroes-capital-123.streamlit.app/`
-  - Pages: `1_🤖_AI_Data_Analyst.py`, `2_📊_Era_View.py`
+  - Pages: `1_🤖_AI_Data_Analyst.py`, `2_📊_Era_View.py`, `3_📈_Journey_Analytics.py`
   - Auth: `gcp_service_account` via Streamlit Secrets
   - Resilience: falls back to local `gold_phase1_data.csv` if BQ unreachable
+  - All pages have sidebar: 🔄 Refresh Data + ⚙️ Reprocess GCS Files buttons
+  - `requirements.txt` includes `google-cloud-storage` for the Reprocess button
 - **Service account (dashboard/deploy):** `averroes-dashboard-live@averroes-portfolio-intel.iam.gserviceaccount.com`
   - Key file: `averroes-portfolio-intel-a35a3d912d2c.json`
   - Roles: `bigquery.admin`, `storage.admin`
@@ -73,13 +75,18 @@ Currency: GBP. All monetary figures stored in £k unless suffixed otherwise.
 
 ## 5. Era model (important)
 
-Alpha's MA files evolved over time. The v2 parser branches by era because sheet availability and schema differ dramatically. 16 MA files total, spanning 2024-11 → 2026-02.
+Alpha's MA files evolved over time. The v2/v3 parser branches by era because sheet availability and schema differ dramatically. 28 MA files total, spanning 2023-11 → 2026-02.
 
-| Era | Months | Sheets available | Parser behaviour |
-|---|---|---|---|
-| **Era 1** | 2024-11 → 2025-10 (12 files) | P&L Summary + Headcount only (~15-23 sheets). `P&L Summary ` has trailing-space drift. | Extract top-line revenue/cost totals + headcount. No BL split, no KPI sheet, no waterfall. |
-| **Era 2** | 2025-11 → 2025-12 (2 files) | + P&L Detail + Balance Sheet (~32 sheets) | Unlocks BL-level revenue/contribution (ecommerce/ems/services) via P&L Detail. Balance sheet → cash, NWC, net debt. |
-| **Era 3** | 2026-01 → 2026-02 (2 files) | + Financial KPIs + Revenue Waterfall (~36 sheets) | Full KPI suite + revenue waterfall bridge (wf_* columns). |
+| Era | Months | Files | Sheets available | Parser behaviour |
+|---|---|---|---|---|
+| **Era 1** | 2023-11 → 2025-10 | 24 | `Summary` (trailing space drift), `Headcount`, `Ecommerce P&L`, `EMS P&L` | Label-scanning parser handles FY24 compact (no EBITDA Less Capex), FY24 extended, and FY25 layouts. Col 10 detected as Variance (FY24) or Prior Year (FY25). |
+| **Era 2** | 2025-11 → 2025-12 | 2 | + `P&L Detail`, `Balance Sheet`, `GL Covenants`, `Averroes Guard Rails`, `Cosmo Portal Upload` (~32 sheets) | Unlocks BL-level revenue/contribution, balance sheet, covenants. |
+| **Era 3** | 2026-01 → 2026-02 | 2 | + `Financial KPIs`, `Revenue Waterfall`, `Customer Numbers`, `Cash Flow`, `KPI data`, `P&L Summary` (~36 sheets) | Full KPI suite + revenue waterfall bridge (wf_* columns). |
+
+FY24 layout variants (handled by era1_parser.py label scanning):
+- **FY24 compact** (Nov 23 – ~May 24): No EBITDA Less Capex row; Tech MRR/Cash start at R20. Col 10 = Variance.
+- **FY24 extended** (Jun 24 – Oct 24): Capitalised Dev + EBITDA Less Capex inserted; Tech MRR at ~R28. Col 10 = Variance.
+- **FY25** (Nov 24 – Oct 25): Same extended layout + LTM Tech MRR row. Col 10 = Prior Year.
 
 Sheet-name drift to watch: `P&L Summary ` (trailing space) in Era 1 files. Parser must tolerate this.
 
@@ -275,7 +282,9 @@ gcloud functions call portfolio-anomaly-detect --region=europe-west2 --gen2
 
 ## 11. Known fragilities / TODO
 
-- **Parser brittleness across eras.** Cell coordinates shift between eras; `P&L Summary ` trailing space in Era 1 caused parser misses — keep tolerant lookups.
+- **~~Parser brittleness across eras.~~** MITIGATED (2026-04-28). Era 1 parser rewritten with label scanning for bottom section (Tech MRR, Cash, NWC, etc.) across FY24/FY25 layout variants. Era 2/3 still use some hardcoded positions. `P&L Summary ` trailing-space drift handled by `find_sheet()`.
+- **Services MRR/ARR gap.** `SERVICES_MRR` only exists from Financial KPIs sheet (Era 3, Jan 2026+). Services ARR is empty for all months before Jan 2026. Do NOT derive/estimate — only use when present in source data.
+- **~~Cloud Function file filter too restrictive.~~** FIXED (2026-04-28). Was only accepting "Management Accounts"/"MAfile" in filename. Now accepts any `.xlsx/.xls/.xlsm`, skipping temp/hidden files.
 - **~~Customer Numbers sheet not parsed.~~** DONE (2026-04-16). Both `deploy/parsers/alpha_parser.py` and `functions/ingest/parsers/era3_parser.py` now extract per-BL modules + revenue + ARPC + geo from this sheet. Needs backfill run to populate gold.
 - **~~Dashboard still points at legacy `gold.kpi_monthly`.~~** DONE (2026-04-16). `app.py` now queries `gold.kpi_monthly_v2` with a `harmonize_v2_columns()` compat layer. Era View Module 5 shows per-BL stacked bars.
 - **~~Covenant data not parsed (View 7 showing zeros).~~** DONE (2026-04-16). Both parser codepaths now extract 23 KPIs from `GL Covenants` (ARR covenant ratio, Interest Cover, Debt Service, Cash Min) and `Averroes Guard Rails` (Revenue/MRR/Contribution/EBITDA-less-Capex/Cash — each with covenant, actual, ratio). Dashboard compat layer maps these to View 7 with dynamic RAG status. Gold v2 schema includes 22 new covenant columns. Needs backfill run.
