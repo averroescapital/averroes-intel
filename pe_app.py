@@ -847,21 +847,6 @@ st.markdown(f'<div class="sub-header">{row.get("fy", "")} {row.get("fy_quarter",
 st.markdown("---")
 
 # ============================================================
-# ANOMALY & RISK ALERTS
-# ============================================================
-if alerts:
-    with st.expander("🚨 CRITICAL PORTFOLIO ALERTS DETECTED", expanded=True):
-        for a in alerts:
-            col_l, col_r = st.columns([1, 4])
-            with col_l:
-                st.markdown(f"**{a['level']}**")
-                st.caption(a['metric'])
-            with col_r:
-                st.markdown(a['message'])
-                st.info(f"**Recommended Action:** {a['action']}")
-        st.markdown("---")
-
-# ============================================================
 # QA DATA QUALITY PANEL
 # ============================================================
 @st.cache_data(ttl=300)
@@ -1378,6 +1363,21 @@ for col in ['YTD Actual', 'YTD Budget', 'YTD Prior Year']:
 
 st.dataframe(ytd_df, use_container_width=True, hide_index=True)
 
+
+# ============================================================
+# ANOMALY & RISK ALERTS
+# ============================================================
+if alerts:
+    st.markdown('<div class="kpi-section-title">Critical Portfolio Alerts</div>', unsafe_allow_html=True)
+    with st.expander("🚨 CRITICAL PORTFOLIO ALERTS DETECTED", expanded=True):
+        for a in alerts:
+            col_l, col_r = st.columns([1, 4])
+            with col_l:
+                st.markdown(f"**{a['level']}**")
+                st.caption(a['metric'])
+            with col_r:
+                st.markdown(a['message'])
+                st.info(f"**Recommended Action:** {a['action']}")
 
 # ============================================================
 # FOOTER
