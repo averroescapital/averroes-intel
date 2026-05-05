@@ -14,15 +14,19 @@ import os
 import io
 import functions_framework
 import pandas as pd
+import openpyxl
 from google.cloud import bigquery, storage
 
-from parsers.alpha_parser import parse_alpha_ma
+from parsers.router import parse as route_parse
+from parsers.common import period_from_filename
 from silver_gold_v2 import build_silver_from_parsed, pivot_to_gold
+from qa_checks import run_qa_checks
 
 PROJECT_ID = os.environ.get("GCP_PROJECT", "averroes-portfolio-intel")
 BRONZE_TABLE = f"{PROJECT_ID}.bronze.raw_management_accounts"
 SILVER_TABLE = f"{PROJECT_ID}.silver.kpi_long"
 GOLD_TABLE   = f"{PROJECT_ID}.gold.kpi_monthly_v2"
+QA_TABLE     = f"{PROJECT_ID}.bronze.qa_results"
 
 bq_client = bigquery.Client(project=PROJECT_ID)
 storage_client = storage.Client(project=PROJECT_ID)
@@ -60,18 +64,38 @@ def process_file(cloud_event):
 
     # --- 1. Parse ---
     try:
-        parsed_rows = parse_alpha_ma(file_bytes, basename)
+        wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
+    except Exception as e:
+        print(f"[ingest] ERROR opening workbook {basename}: {e.__class__.__name__}: {e}")
+        import traceback; traceback.print_exc()
+        return
+
+    try:
+        parsed_rows, era = route_parse(wb, file_name=basename)
+        print(f"[ingest] parsed {len(parsed_rows)} rows (era={era})")
     except Exception as e:
         print(f"[ingest] ERROR parsing {basename}: {e.__class__.__name__}: {e}")
         import traceback; traceback.print_exc()
+        wb.close()
         return
 
     if not parsed_rows:
         print(f"[ingest] parser returned no rows for {basename} — file may have an unrecognised layout")
+        wb.close()
         return
-    era = parsed_rows[0].get("era", "unknown")
+
     periods = sorted(set(r.get("period", "?") for r in parsed_rows))
-    print(f"[ingest] parsed {len(parsed_rows)} rows (era={era}, periods={periods})")
+    print(f"[ingest] periods={periods}")
+
+    # --- 1b. QA Structure Checks (non-blocking) ---
+    try:
+        filename_period = period_from_filename(basename)
+        qa_results = run_qa_checks(wb, era, parsed_rows, basename, portco_id, filename_period)
+        write_qa_results(qa_results, portco_id)
+    except Exception as e:
+        print(f"[QA] ERROR (non-blocking): {e}")
+    finally:
+        wb.close()
 
     # --- 2. Bronze ---
     write_bronze(parsed_rows, portco_id, basename)
@@ -226,6 +250,81 @@ def write_gold(gold_df: pd.DataFrame, portco_id: str):
 
     bq_client.load_table_from_dataframe(df, GOLD_TABLE, job_config=job_config).result()
     print(f"[gold] wrote {len(df)} rows to {GOLD_TABLE}")
+
+
+# ---------------------------------------------------------------------------
+# QA RESULTS  (bronze.qa_results)
+# ---------------------------------------------------------------------------
+def write_qa_results(qa_results, portco_id):
+    """Write QA check results to BigQuery. Creates table if it doesn't exist."""
+    if not qa_results:
+        return
+
+    # Ensure table exists (idempotent DDL)
+    _ensure_qa_table()
+
+    file_name = qa_results[0].get('file_name', '')
+
+    # Idempotent: delete previous QA results for this file
+    _delete(
+        f"DELETE FROM `{QA_TABLE}` WHERE file_name = @f",
+        [bigquery.ScalarQueryParameter("f", "STRING", file_name)],
+    )
+
+    # Shape rows to BQ schema
+    rows = []
+    for r in qa_results:
+        rows.append({
+            'qa_run_id':      r.get('qa_run_id'),
+            'file_name':      r.get('file_name'),
+            'portco_id':      r.get('portco_id', portco_id),
+            'period':         _iso_date(r.get('period')),
+            'era':            r.get('era'),
+            'check_category': r.get('check_category'),
+            'check_name':     r.get('check_name'),
+            'severity':       r.get('severity'),
+            'sheet':          r.get('sheet'),
+            'cell':           r.get('cell'),
+            'expected':       str(r.get('expected', ''))[:500],
+            'actual':         str(r.get('actual', ''))[:500],
+            'message':        str(r.get('message', ''))[:1000],
+            'checked_at':     r.get('checked_at'),
+        })
+
+    job_config = bigquery.LoadJobConfig(
+        write_disposition="WRITE_APPEND",
+        autodetect=True,
+    )
+    bq_client.load_table_from_json(rows, QA_TABLE, job_config=job_config).result()
+    errors = sum(1 for r in qa_results if r['severity'] == 'error')
+    warnings = sum(1 for r in qa_results if r['severity'] == 'warning')
+    print(f"[QA] wrote {len(rows)} results to {QA_TABLE} ({errors} errors, {warnings} warnings)")
+
+
+def _ensure_qa_table():
+    """Create bronze.qa_results if it doesn't exist."""
+    ddl = f"""
+    CREATE TABLE IF NOT EXISTS `{QA_TABLE}` (
+        qa_run_id STRING,
+        file_name STRING,
+        portco_id STRING,
+        period DATE,
+        era STRING,
+        check_category STRING,
+        check_name STRING,
+        severity STRING,
+        sheet STRING,
+        cell STRING,
+        expected STRING,
+        actual STRING,
+        message STRING,
+        checked_at STRING
+    )
+    """
+    try:
+        bq_client.query(ddl).result()
+    except Exception as e:
+        print(f"[QA] DDL skipped: {e}")
 
 
 # ---------------------------------------------------------------------------

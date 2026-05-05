@@ -856,6 +856,90 @@ if alerts:
         st.markdown("---")
 
 # ============================================================
+# QA DATA QUALITY PANEL
+# ============================================================
+@st.cache_data(ttl=300)
+def _load_qa_data(_portco_id):
+    """Load latest QA results from bronze.qa_results."""
+    try:
+        if "gcp_service_account" in st.secrets:
+            from google.oauth2 import service_account as _sa2
+            _creds2 = _sa2.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
+            _bq2 = __import__('google.cloud.bigquery', fromlist=['Client']).Client(
+                project=PROJECT_ID, credentials=_creds2)
+        else:
+            _bq2 = __import__('google.cloud.bigquery', fromlist=['Client']).Client(project=PROJECT_ID)
+        sql = f"""
+            SELECT qa_run_id, file_name, period, era, check_category, check_name,
+                   severity, sheet, cell, expected, actual, message, checked_at
+            FROM `{PROJECT_ID}.bronze.qa_results`
+            WHERE portco_id = @p
+            ORDER BY checked_at DESC, severity DESC
+            LIMIT 200
+        """
+        from google.cloud import bigquery as _bq_mod
+        job = _bq2.query(sql, job_config=_bq_mod.QueryJobConfig(
+            query_parameters=[_bq_mod.ScalarQueryParameter("p", "STRING", _portco_id)]))
+        return job.to_dataframe()
+    except Exception:
+        return pd.DataFrame()
+
+qa_df = _load_qa_data(selected_portco)
+
+if not qa_df.empty:
+    # Get the latest QA run
+    latest_run = qa_df['qa_run_id'].iloc[0]
+    latest_qa = qa_df[qa_df['qa_run_id'] == latest_run]
+    latest_file = latest_qa['file_name'].iloc[0] if not latest_qa.empty else "?"
+
+    n_errors = (latest_qa['severity'] == 'error').sum()
+    n_warnings = (latest_qa['severity'] == 'warning').sum()
+    n_info = (latest_qa['severity'] == 'info').sum()
+    n_total = len(latest_qa)
+
+    if n_errors > 0:
+        qa_icon = "🔴"
+        qa_status = f"{n_errors} errors, {n_warnings} warnings"
+    elif n_warnings > 0:
+        qa_icon = "🟡"
+        qa_status = f"{n_warnings} warnings"
+    else:
+        qa_icon = "🟢"
+        qa_status = "All checks passed"
+
+    with st.expander(f"{qa_icon} Data Quality — {qa_status} ({latest_file})", expanded=(n_errors > 0)):
+        # Summary metrics
+        qc1, qc2, qc3, qc4 = st.columns(4)
+        with qc1:
+            st.metric("Total Checks", n_total)
+        with qc2:
+            st.metric("Errors", n_errors, delta=None)
+        with qc3:
+            st.metric("Warnings", n_warnings, delta=None)
+        with qc4:
+            st.metric("File", latest_file[:30])
+
+        # Show errors and warnings
+        issues = latest_qa[latest_qa['severity'].isin(['error', 'warning'])].copy()
+        if not issues.empty:
+            st.markdown("**Issues found:**")
+            for _, iq in issues.iterrows():
+                sev_icon = "🔴" if iq['severity'] == 'error' else "🟡"
+                sheet_info = f" [{iq['sheet']}]" if pd.notna(iq.get('sheet')) and iq['sheet'] else ""
+                cell_info = f" {iq['cell']}" if pd.notna(iq.get('cell')) and iq['cell'] else ""
+                st.markdown(f"{sev_icon} **{iq['check_category']}**{sheet_info}{cell_info}: {iq['message']}")
+        else:
+            st.success("All structure checks passed — file layout matches expected format.")
+
+        # Collapsible full details
+        with st.expander("View all check details"):
+            st.dataframe(
+                latest_qa[['severity', 'check_category', 'check_name', 'sheet', 'cell', 'message']],
+                use_container_width=True,
+                hide_index=True,
+            )
+
+# ============================================================
 # EXECUTIVE SUMMARY - Top-line KPIs
 # ============================================================
 st.markdown('<div class="kpi-section-title">Executive Summary</div>', unsafe_allow_html=True)
