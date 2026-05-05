@@ -13,6 +13,36 @@ Format per entry:
 
 ---
 
+## 2026-05-05 — Dashboard revamp, QA structure checks, legacy cleanup (v3.1)
+**What:** Complete dashboard look-and-feel overhaul (clean white + Averroes blue theme, dark navy sidebar, 3 views only). Added QA structure checks layer at file ingest time. Decommissioned legacy `gold.kpi_monthly` from active code. Built CSV fallback refresh script.
+**Why:** Dashboard needed a polished, high-end look for IC/GP presentations. QA layer ensures Excel file structure is validated before parsing — catches sheet renames, label drift, missing periods. Legacy gold table was causing confusion with two parallel sources of truth. CSV fallback was stale.
+**Changes:**
+1. **Dashboard revamp** (`.streamlit/config.toml`, `pe_app.py`, `pages/1_📈_Journey_KPIs_Boardpack.py`, `pages/2_🤖_AI_Data_Analyst.py`): Clean white background, Inter typography, dark navy sidebar gradient, Averroes Capital branding, hover shadows on KPI cards. Removed Era View page (`pages/2_📊_Era_View.py` deleted). Renamed pages: pe_app.py → "PortCo KPI Tracker", Journey Analytics → "Journey KPIs + Boardpack".
+2. **QA structure checks** (`functions/ingest/qa_checks.py`, ~300 lines): Four check categories — sheet presence (required vs optional per era), label anchors (verifies key cells contain expected text), period cells (validates date headers), parsed output (row counts + critical KPI presence). Non-blocking: results logged to `bronze.qa_results`, pipeline continues regardless.
+3. **QA integration** (`functions/ingest/main.py`): Refactored workbook lifecycle — opened in main.py, shared between parser and QA, closed after both complete. Added `write_qa_results()` + `_ensure_qa_table()` DDL. QA results table auto-created on first run.
+4. **QA dashboard panel** (`pe_app.py`): Collapsible expander between anomaly alerts and executive summary showing latest QA run — color-coded status (🔴/🟡/🟢), summary metrics, issue list.
+5. **AI Data Analyst QA context** (`pages/2_🤖_AI_Data_Analyst.py`): Added `bronze.qa_results` as third database in Gemini schema prompt.
+6. **Legacy gold.kpi_monthly decommission**: Verified no active code reads/writes to legacy table. All live paths use `gold.kpi_monthly_v2`. Legacy refs only in dead files (`deploy/pe_app.py`, `deploy/phase1_parser.py`, etc.). Safe to DROP.
+7. **CSV fallback refresh** (`scripts/refresh_gold_csv.py`): New script exports `gold.kpi_monthly_v2` to `gold_kpi_monthly.csv`. Dashboard fallback paths updated to find repo-root CSV first, then legacy `dashboard/` path.
+**Files touched:**
+- `.streamlit/config.toml` — new (theme)
+- `pe_app.py` — full CSS overhaul + QA panel + CSV fallback fix
+- `pages/1_📈_Journey_KPIs_Boardpack.py` — renamed + restyled + CSV fallback fix
+- `pages/2_🤖_AI_Data_Analyst.py` — restyled + QA schema context
+- `pages/2_📊_Era_View.py` — deleted
+- `functions/ingest/qa_checks.py` — new (structure validation)
+- `functions/ingest/main.py` — QA integration, workbook refactor
+- `scripts/refresh_gold_csv.py` — new (CSV export)
+- `PROJECT_BRIEF.md` — updated phase, pages, data model, fragilities, repo layout
+- `CHANGELOG.md` — this entry
+**Follow-ups:**
+- Redeploy Cloud Function with QA changes (`gcloud functions deploy`)
+- Run `scripts/refresh_gold_csv.py` to generate fresh CSV fallback
+- DROP legacy `gold.kpi_monthly` table in BQ when confirmed safe
+- Onboard Portco Beta / Gamma
+
+---
+
 ## 2026-04-28 — FY24 support, Journey Analytics, Cloud Function hardening (v3.0)
 **What:** Major expansion: added FY24 (Nov 2023–Oct 2024) support via era1 parser rewrite, new Journey Analytics dashboard page, Cloud Function file filter fix, Reprocess GCS Files buttons on all pages, system artifact updated to v3.0.0. Total MA files: 28 (up from 16).
 **Why:** FY24 files uploaded to GCS weren't being processed (file filter too restrictive + parser couldn't handle FY24 layout). Journey Analytics requested for investor-deck-style trailing 12-month views.

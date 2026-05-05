@@ -697,14 +697,20 @@ def load_data():
         return df_gcs, gcs_status
 
     # --- 3. Local CSV (emergency only) ---
-    csv_path = os.path.join(os.path.dirname(__file__), "dashboard", "gold_kpi_monthly.csv")
-    try:
-        df_csv = pd.read_csv(csv_path)
-        df_csv['period'] = pd.to_datetime(df_csv['period']).dt.tz_localize(None).dt.normalize()
-        if not df_csv.empty:
-            return df_csv, "csv_fallback"
-    except Exception as csv_e:
-        print(f"CSV load warning: {csv_e}")
+    # Try repo-root CSV first (written by scripts/refresh_gold_csv.py), then legacy paths
+    for csv_path in [
+        os.path.join(os.path.dirname(__file__), "gold_kpi_monthly.csv"),
+        os.path.join(os.path.dirname(__file__), "dashboard", "gold_kpi_monthly.csv"),
+    ]:
+        if not os.path.exists(csv_path):
+            continue
+        try:
+            df_csv = pd.read_csv(csv_path)
+            df_csv['period'] = pd.to_datetime(df_csv['period']).dt.tz_localize(None).dt.normalize()
+            if not df_csv.empty:
+                return df_csv, "csv_fallback"
+        except Exception as csv_e:
+            print(f"CSV load warning: {csv_e}")
 
     return pd.DataFrame(), "error"
 

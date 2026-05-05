@@ -133,10 +133,10 @@ def load_v2():
     except Exception as e:
         pass
 
-    # Fallback: local CSV
+    # Fallback: local CSV (written by scripts/refresh_gold_csv.py)
     for csv_try in [
-        os.path.join(os.path.dirname(__file__), "..", "dashboard", "gold_kpi_monthly.csv"),
         os.path.join(os.path.dirname(__file__), "..", "gold_kpi_monthly.csv"),
+        os.path.join(os.path.dirname(__file__), "..", "dashboard", "gold_kpi_monthly.csv"),
     ]:
         if os.path.exists(csv_try):
             df = pd.read_csv(csv_try)

@@ -119,9 +119,21 @@ DATABASES AVAILABLE:
      - value (FLOAT64): Raw numeric value.
      - source_cell (STRING): Excel cell reference (e.g. 'B35').
 
+3. QA LAYER: `{PROJECT_ID}.bronze.qa_results`
+   - Use for: Data quality checks, file validation status, structure anomalies.
+   - Columns:
+     - file_name (STRING): Excel filename that was checked
+     - portco_id (STRING): Portfolio company identifier
+     - check_category (STRING): 'sheet_presence', 'label_anchor', 'period_cell', 'parsed_output'
+     - check_name (STRING): Specific check name
+     - severity (STRING): 'error', 'warning', or 'info'
+     - message (STRING): Human-readable description of the issue
+     - checked_at (STRING): Timestamp of QA run
+
 STRATEGY:
 - If asked "What is the total ARR?", use GOLD.
 - If asked "Where did the EBITDA number come from?" or "What was the raw value in cell B18 of the P&L sheet?", use BRONZE.
+- If asked "Any data quality issues?" or "Which files had errors?", use QA.
 - Return ONLY the SQL query. No markdown.
 
 User Question: 

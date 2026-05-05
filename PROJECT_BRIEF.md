@@ -2,7 +2,7 @@
 
 **Purpose of this file:** This is the living source of truth for any AI/assistant (or human) picking up the project cold. Read this first, then CHANGELOG.md. Update whenever non-trivial work lands.
 
-**Last updated:** 2026-04-28
+**Last updated:** 2026-05-05
 
 ---
 
@@ -17,7 +17,7 @@ PE-grade portfolio monitoring platform for Averroes Capital. Ingests monthly Man
 
 ## 2. Current phase
 
-**V3 LIVE (2026-04-28).** FY24 support added — era1 parser rewritten with label scanning to handle 24 months of layout drift (FY24 Nov 2023–Oct 2024 + FY25 Nov 2024–Oct 2025). Total MA files: 28 (spanning Nov 2023 → Feb 2026). Cloud Function file filter relaxed (any .xlsx, not just "Management Accounts"). New Journey Analytics page (trailing 12-month investor charts with month selector). Reprocess GCS Files + Refresh Data buttons on all dashboard pages. System artifact updated to v3.0.0. All deployed: Cloud Function redeployed, GitHub pushed, Streamlit Community Cloud live at `https://averroes-capital-123.streamlit.app/`.
+**V3.1 LIVE (2026-05-05).** Dashboard revamped: clean white + Averroes blue theme, dark navy sidebar, three views only (PortCo KPI Tracker, Journey KPIs + Boardpack, AI Data Analyst). Era View removed. QA structure checks layer added — non-blocking validation at file upload (sheet presence, label anchors, period cells, parsed output counts), results stored in `bronze.qa_results`, visible in dashboard QA panel. Legacy `gold.kpi_monthly` decommissioned from active code — all live paths use `gold.kpi_monthly_v2`. CSV fallback refreshed via `scripts/refresh_gold_csv.py`. AI Data Analyst now has QA layer in its schema context. Total MA files: 28 (spanning Nov 2023 → Feb 2026). Streamlit Community Cloud live at `https://averroes-capital-123.streamlit.app/`.
 
 ---
 
@@ -62,9 +62,10 @@ Currency: GBP. All monetary figures stored in £k unless suffixed otherwise.
 - **Anomaly function:** `portfolio-anomaly-detect` (scheduled, generates alerts + Gemini exec commentary)
 - **BI frontend:** Streamlit Community Cloud (`dashboard/app.py` and `dashboard/pe_app.py`)
   - Live URL: `https://averroes-capital-123.streamlit.app/`
-  - Pages: `1_🤖_AI_Data_Analyst.py`, `2_📊_Era_View.py`, `3_📈_Journey_Analytics.py`
+  - Pages: `1_📈_Journey_KPIs_Boardpack.py`, `2_🤖_AI_Data_Analyst.py` (3 views total incl. pe_app.py)
+  - Theme: clean white + Averroes blue (`.streamlit/config.toml`), dark navy sidebar via CSS injection
   - Auth: `gcp_service_account` via Streamlit Secrets
-  - Resilience: falls back to local `gold_phase1_data.csv` if BQ unreachable
+  - Resilience: falls back to local `gold_kpi_monthly.csv` if BQ unreachable (refresh via `scripts/refresh_gold_csv.py`)
   - All pages have sidebar: 🔄 Refresh Data + ⚙️ Reprocess GCS Files buttons
   - `requirements.txt` includes `google-cloud-storage` for the Reprocess button
 - **Service account (dashboard/deploy):** `averroes-dashboard-live@averroes-portfolio-intel.iam.gserviceaccount.com`
@@ -99,6 +100,9 @@ Canonical P&L Detail row layout (Era 2+): R5-R8 Revenue (Ecom/EMS/Services/Total
 ### Bronze — `bronze.raw_management_accounts`
 Every extracted cell as a row. Schema: `sheet_name, row_label, column_label, value, source_cell`. Single source of truth for audit.
 
+### Bronze — `bronze.qa_results`
+QA structure check results per file upload. Schema: `qa_run_id, file_name, portco_id, period, era, check_category, check_name, severity, sheet, cell, expected, actual, message, checked_at`. Auto-created on first QA run via DDL in `main.py`. Four check categories: sheet_presence, label_anchor, period_cell, parsed_output.
+
 ### Silver — `silver.kpi_long` (v2, long-format)
 ```
 portco_id, period (DATE, 1st of month), kpi (canonical name), value FLOAT64,
@@ -125,8 +129,8 @@ One row per portco × period. Key groups:
 
 Partitioned by month, clustered on `portco_id`.
 
-### Gold — `gold.kpi_monthly` (legacy, ~160 cols)
-Preserved untouched for archaeology. Populated by KPITracker ingest (FY23–FY26) + old MA MERGE logic. Has `wf_*` Revenue Waterfall Bridge columns added via `bq_schemas/alter_add_wf_columns.sql` (wf_revenue_start, wf_one_off_prev, wf_one_off_ytd, wf_recurring_growth, wf_arr_ytg, wf_weighted_pipeline, wf_budget_assumptions, wf_revenue_gap, wf_revenue_end). Dashboard cutover to `kpi_monthly_v2` is pending.
+### Gold — `gold.kpi_monthly` (DEPRECATED)
+No active code writes to or reads from this table. All live paths use `gold.kpi_monthly_v2`. Kept for archaeology only. Legacy references exist in `deploy/pe_app.py`, `deploy/phase1_parser.py`, `functions/ingest/phase1_parser.py`, and `gold_dummy.py` — all dead code. Safe to DROP when ready: `DROP TABLE IF EXISTS \`averroes-portfolio-intel.gold.kpi_monthly\``.
 
 ### Gold views
 - `gold.revenue_ltm_by_bl` — trailing 12-month revenue per BL
@@ -190,6 +194,7 @@ averroes-portfolio-intel/
 ├── averroes_architecture_guide.md
 ├── portfolio_analytics_documentation.md
 ├── kpi_taxonomy.yaml           ← canonical KPIs + anomaly rules
+├── .streamlit/config.toml      ← Streamlit theme (white+blue)
 ├── deploy.sh                   ← v1 deploy
 ├── generate_sample_data.py     ← 30 months synthetic w/ Sept 2024 anomaly
 ├── trigger_local.py
@@ -215,16 +220,21 @@ averroes-portfolio-intel/
 │   ├── requirements.txt
 │   └── averroes-dashboard-deploy.zip
 │
+├── scripts/
+│   └── refresh_gold_csv.py     ← exports gold.kpi_monthly_v2 → gold_kpi_monthly.csv
+│
 ├── functions/
-│   ├── ingest/                 ← Cloud Function: GCS → bronze/silver
+│   ├── ingest/                 ← Cloud Function: GCS → bronze/silver + QA checks
+│   │   ├── qa_checks.py        ← structure validation (sheet/label/period/output)
+│   │   └── ...
 │   └── anomaly_detect/         ← Cloud Function: gold → alerts + Gemini commentary
 │
 ├── dashboard/
 │   ├── app.py                  ← "Averroes Portfolio Portal" (primary, 7 views)
 │   ├── pe_app.py               ← earlier KPI-tracker-shaped prototype
 │   ├── pages/
-│   │   ├── 1_🤖_AI_Data_Analyst.py
-│   │   └── 2_📊_Era_View.py
+│   │   ├── 1_📈_Journey_KPIs_Boardpack.py  ← (MOVED to root pages/)
+│   │   └── 2_🤖_AI_Data_Analyst.py         ← (MOVED to root pages/)
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   ├── capture_live.py
@@ -288,7 +298,7 @@ gcloud functions call portfolio-anomaly-detect --region=europe-west2 --gen2
 - **~~Customer Numbers sheet not parsed.~~** DONE (2026-04-16). Both `deploy/parsers/alpha_parser.py` and `functions/ingest/parsers/era3_parser.py` now extract per-BL modules + revenue + ARPC + geo from this sheet. Needs backfill run to populate gold.
 - **~~Dashboard still points at legacy `gold.kpi_monthly`.~~** DONE (2026-04-16). `app.py` now queries `gold.kpi_monthly_v2` with a `harmonize_v2_columns()` compat layer. Era View Module 5 shows per-BL stacked bars.
 - **~~Covenant data not parsed (View 7 showing zeros).~~** DONE (2026-04-16). Both parser codepaths now extract 23 KPIs from `GL Covenants` (ARR covenant ratio, Interest Cover, Debt Service, Cash Min) and `Averroes Guard Rails` (Revenue/MRR/Contribution/EBITDA-less-Capex/Cash — each with covenant, actual, ratio). Dashboard compat layer maps these to View 7 with dynamic RAG status. Gold v2 schema includes 22 new covenant columns. Needs backfill run.
-- **`gold_phase1_data.csv` fallback drifts** from live BQ — needs a refresh cadence or a script.
+- **~~`gold_phase1_data.csv` fallback drifts.~~** FIXED (2026-05-05). New `scripts/refresh_gold_csv.py` exports `gold.kpi_monthly_v2` to `gold_kpi_monthly.csv`. Run after each backfill. Dashboard fallback paths updated to find it.
 - **Beta / Gamma onboarding** requires net-new parser classes in `deploy/parsers/`.
 - **AI Analyst context** — if we add many more columns, the Gemini system prompt will need condensation.
 
